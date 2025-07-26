@@ -1,0 +1,5 @@
+Date,Filter_Type,Brand,MERV_Rating,Cost,Notes
+2025-02-25,HVAC,Carrier Infinity,15,130,Initial installation with new HVAC
+2025-02-25,ERV,Broan,8,40,Initial installation with ERV
+2025-06-01,HVAC,Carrier Infinity,15,130,Regular replacement
+2025-06-01,ERV,Broan,13,50,Upgraded from MERV 8 to MERV 13

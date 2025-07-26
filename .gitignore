@@ -1,0 +1,53 @@
+# Environment and secrets
+.env
+.env.*
+*.secret
+config/secrets.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+
+# UV
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Data files (contain personal data)
+data/
+*.csv
+*.json
+*.jsonl
+!data/.gitkeep
+!*_template.csv
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
+
+# Distribution
+dist/
+build/
+*.egg-info/
