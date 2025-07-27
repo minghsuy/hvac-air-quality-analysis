@@ -126,3 +126,57 @@ The system aims to prevent asthma symptoms by replacing filters before efficienc
 - Any network-specific identifiers
 
 Always use generic placeholders (XX, X.XX) in documentation and examples. Check all commits for accidentally exposed network information before pushing to public repositories.
+
+## GitHub Wiki Management (Learned: July 27, 2025)
+
+### Key Learnings About GitHub Wiki
+
+1. **Wiki is a Separate Repository**
+   - Main repo: `https://github.com/username/project.git`
+   - Wiki repo: `https://github.com/username/project.wiki.git`
+   - They are completely separate git repositories
+
+2. **Directory Structure**
+   - Wiki has a flat structure - all pages are .md files in root
+   - No subdirectories for organization
+   - Page names become URLs (spaces → hyphens)
+
+3. **Cloning and Working with Wiki**
+   ```bash
+   # Clone wiki to a separate directory
+   git clone https://github.com/username/project.wiki.git
+   
+   # Or if inside main project, use a subdirectory
+   git clone https://github.com/username/project.wiki.git wiki-repo
+   cd wiki-repo
+   ```
+
+4. **Image Handling in Wiki**
+   - Wiki cannot directly embed images from main repo
+   - Images show as links, not embedded
+   - Options:
+     - Upload images to wiki repo itself
+     - Use external image hosting
+     - Reference raw GitHub content URLs from main repo
+
+5. **Common Confusion Points**
+   - Forgetting which directory you're in (main vs wiki)
+   - Trying to use relative paths between repos
+   - Expecting wiki pages in main repo to auto-sync
+   - Working directory confusion when using `cd` commands
+
+6. **Best Practices**
+   - Keep wiki content in wiki repo only
+   - Don't duplicate wiki content in main repo
+   - Use wiki for documentation, main repo for code
+   - Clone wiki separately when doing major updates
+   - Always verify current directory with `pwd`
+
+### For This Project
+- Wiki URL: https://github.com/minghsuy/hvac-air-quality-analysis/wiki
+- Wiki clone: `git clone https://github.com/minghsuy/hvac-air-quality-analysis.wiki.git`
+- Pages created: Home, Hardware-Setup, Data-Collection, Analysis-Results, Analysis-Techniques
+- Images referenced from: `/data/figures/` in main repo (as links)
+
+### Lesson Learned
+Don't assume wiki pages can be managed from main repo - they're separate! Always check which directory/repo you're working in. The wiki is its own git repository with its own commit history.
