@@ -31,7 +31,7 @@ jobs:
         zip -r dist/hvac-air-quality-${{ github.ref_name }}.zip *.py scripts/ tests/ -x "*.pyc" "__pycache__/*"
         
         # Create a tarball as well
-        tar -czf dist/hvac-air-quality-${{ github.ref_name }}.tar.gz *.py scripts/ tests/ --exclude="*.pyc" --exclude="__pycache__"
+        tar --exclude="*.pyc" --exclude="__pycache__" -czf dist/hvac-air-quality-${{ github.ref_name }}.tar.gz *.py scripts/ tests/
 
     - name: Generate release notes
       id: changelog
