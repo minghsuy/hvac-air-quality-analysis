@@ -382,3 +382,49 @@ All pages: "Save $130-910/year depending on replacement schedule"
 ### The Wiki Coherence Principle
 
 **Every wiki page should stand alone AND work as part of the whole.** Readers might land on any page from search, so provide context while maintaining a coherent narrative across all pages.
+
+## Release Process and Versioning (Added: July 27, 2025)
+
+### Project Structure
+- Using `src/` layout (package at `src/hvac_air_quality/`)
+- **NOT publishing to PyPI** - GitHub releases only
+- Version tracked in `pyproject.toml` and `src/hvac_air_quality/__init__.py`
+
+### Versioning Scheme
+- Following Semantic Versioning (MAJOR.MINOR.PATCH)
+- Development versions use `-dev` suffix (e.g., `0.2.0-dev`)
+- Current version: `0.2.0-dev`
+
+### Release Automation
+When a tag is pushed (e.g., `v0.2.0`), GitHub Actions will:
+1. Build wheel and sdist packages
+2. Extract release notes from CHANGELOG.md
+3. Create GitHub release with artifacts
+4. **Skip PyPI publishing** (not configured)
+
+### Making a Release
+```bash
+# 1. Update version in pyproject.toml and __init__.py (remove -dev)
+# 2. Update CHANGELOG.md
+# 3. Commit and tag
+git tag -a v0.2.0 -m "Release version 0.2.0"
+git push origin v0.2.0
+```
+
+### GitHub Actions Workflows
+- `.github/workflows/test.yml` - Runs on PRs and main branch
+- `.github/workflows/release.yml` - Runs on version tags
+- Uses `uv` for dependency management
+- Tests with Python 3.12 on Ubuntu and macOS
+
+### Code Quality Tools
+- **Formatter**: ruff format (configured for 100 char lines)
+- **Linter**: ruff check
+- **Pre-commit hooks**: Configured but optional
+- **Testing**: pytest with coverage
+
+### Important Notes
+- Author: Ming Yang (not Ming Hsuy)
+- No email in public package metadata for privacy
+- Credentials (`google-credentials.json`) already in .gitignore
+- Wiki repository managed separately (see warnings above)

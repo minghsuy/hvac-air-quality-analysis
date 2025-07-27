@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: Build package
+      run: |
+        uv build
+
+    - name: Generate release notes
+      id: changelog
+      run: |
+        # Extract version changelog
+        VERSION=${GITHUB_REF#refs/tags/v}
+        sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | sed '$d' > release_notes.md
+        echo "Release notes:"
+        cat release_notes.md
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        body_path: release_notes.md
+        files: |
+          dist/*.whl
+          dist/*.tar.gz
+        draft: false
+        prerelease: ${{ contains(github.ref, '-') }}
+
+    # PyPI publishing disabled - using GitHub releases only
+    # - name: Publish to PyPI
+    #   if: ${{ !contains(github.ref, '-') }}  # Only publish stable releases
+    #   env:
+    #     UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+    #   run: |
+    #     uv publish --no-build
