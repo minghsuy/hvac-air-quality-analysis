@@ -180,3 +180,135 @@ Always use generic placeholders (XX, X.XX) in documentation and examples. Check 
 
 ### Lesson Learned
 Don't assume wiki pages can be managed from main repo - they're separate! Always check which directory/repo you're working in. The wiki is its own git repository with its own commit history.
+
+## Plotly X-Axis Date Formatting (Learned: July 27, 2025)
+
+### Problem
+When exporting Plotly charts to PNG using kaleido, datetime x-axis values often display as scientific notation (e.g., 1.745×10¹⁸), making the charts unreadable.
+
+### Solution
+Convert datetime index to string format before plotting to avoid scientific notation:
+
+```python
+# Bad - causes scientific notation in exported images
+fig.add_trace(go.Scatter(x=df.index, y=df['value']))
+
+# Good - readable date labels
+x_dates = df.index.strftime('%b %d')  # Convert to string format
+fig.add_trace(go.Scatter(x=x_dates, y=df['value']))
+
+# For sparse labels on long timeseries
+num_ticks = 5
+tick_step = len(x_dates) // num_ticks
+fig.update_xaxes(
+    tickmode='array',
+    tickvals=x_dates[::tick_step],
+    ticktext=x_dates[::tick_step],
+    tickangle=-45,
+    row=1, col=2  # if using subplots
+)
+```
+
+### Additional Fixes for Subplots with Dates
+
+1. **Use shapes instead of vlines for datetime x-axis in subplots**:
+```python
+# Bad - causes TypeError with datetime
+fig.add_vline(x=event_date, line_dash="dash")
+
+# Good - works with datetime
+fig.add_shape(
+    type="line",
+    x0=event_date, x1=event_date,
+    y0=0, y1=1,
+    xref="x", yref="paper",
+    line=dict(color="gray", width=1, dash="dash")
+)
+```
+
+2. **Handle string dates in annotations/shapes**:
+```python
+# When using string x-axis, find the corresponding string label
+merv13_idx = (df.index.date == event_date.date()).argmax()
+merv13_label = x_dates[merv13_idx]
+fig.add_shape(x0=merv13_label, x1=merv13_label, ...)
+```
+
+### Key Learnings
+1. **String conversion**: Always use `strftime()` when exporting Plotly to static images
+2. **Sparse ticks**: Use array slicing to show fewer labels for readability  
+3. **Type consistency**: Keep x-axis data type consistent (all datetime or all strings)
+4. **Cache busting**: If GitHub shows old images, rename files (e.g., `image.png` → `image_v2.png`)
+
+### Common Pitfall
+Even if the plot looks fine in Jupyter/browser, kaleido export may still show scientific notation. Always check the exported PNG file!
+
+## Visualization Workflow Best Practices (Learned: July 27, 2025)
+
+### Key Learning: Use Existing Tools, Don't Reinvent
+
+After initially trying to build a custom visualization pipeline, I learned from the research in `docs/compass_artifact_*.md` that excellent solutions already exist:
+
+1. **Quarto** - The modern "write once, deploy everywhere" solution
+   - Converts Jupyter notebooks to multiple formats automatically
+   - Handles figure exports properly
+   - Built-in support for GitHub Flavored Markdown and Hugo
+
+2. **Playwright > Kaleido** - For reliable Plotly exports
+   - Kaleido has issues with datetime axes (scientific notation)
+   - Playwright is more reliable and maintained
+   - Simple wrapper function solves export problems
+
+3. **nb2hugo** - Direct Jupyter to Hugo integration
+   - No intermediate steps needed
+   - Preserves markdown and code structure
+   - Handles front matter automatically
+
+### Recommended Workflow
+
+```bash
+# For new projects: Use Quarto
+quarto convert analysis.ipynb
+quarto render analysis.qmd --to gfm    # For GitHub Wiki
+quarto render analysis.qmd --to hugo   # For Hugo blog
+
+# For existing Hugo sites: Use nb2hugo
+pip install nb2hugo
+nb2hugo analysis.ipynb --site-dir hugo-site --section posts
+
+# For reliable Plotly exports: Use Playwright
+from playwright.sync_api import sync_playwright
+# See VISUALIZATION_WORKFLOW.md for implementation
+```
+
+### Visualization Best Practices
+
+1. **Scale Appropriately**
+   - Don't add reference lines far outside your data range
+   - WHO guideline at 15 μg/m³ is useless when your data is 0-3 μg/m³
+   - Focus on what's relevant to YOUR data
+
+2. **Context Matters**
+   - Add annotations for important events
+   - Use color meaningfully (red=bad, green=good)
+   - Include period markers (vacation, system failures)
+   - Show before/after averages when relevant
+
+3. **Platform Awareness**
+   - GitHub Wiki: Use PNGs with proper paths
+   - Hugo: Can handle interactive HTML/JSON
+   - Both: Need self-contained images
+
+### Anti-Patterns to Avoid
+
+1. ❌ Building custom export pipelines when Quarto exists
+2. ❌ Using kaleido for datetime axes (use Playwright)
+3. ❌ Adding every possible reference line
+4. ❌ Forgetting to check exported images
+5. ❌ Ignoring existing research and solutions
+
+### The Golden Rule
+
+**Always check if someone has already solved your problem before building a custom solution.**
+
+In this case, the `docs/compass_artifact_*.md` file had already researched and found the best solutions. Read existing research before implementing!
