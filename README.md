@@ -86,59 +86,31 @@ vi /data/scripts/.env
 
 3. Link form to a Google Sheet for automatic data collection
 
-## Using Claude Code with Jupyter in VSCode
+## Working with Jupyter Notebooks and Claude Code
 
-### Setup
+### What Claude Code Can Do
+- ✅ Read and edit notebook cells
+- ✅ Write analysis code for you
+- ✅ See cell outputs (text/numbers)
+- ❌ Cannot execute cells (you run them)
+- ❌ Cannot see Plotly visualizations (screenshot and share)
 
-1. Install VSCode extensions:
-   - Python
-   - Jupyter
-   - Claude (by Anthropic)
-
-2. Select Python interpreter:
-   - Cmd/Ctrl + Shift + P → "Python: Select Interpreter"
-   - Choose the uv virtual environment (`.venv`)
-
-3. Create a new notebook:
+### Workflow Example
 ```bash
-# In your project directory
-touch analysis.ipynb
+# 1. Open notebook with Claude Code
+code analysis.ipynb
+
+# 2. Ask Claude to write analysis code
+"Load the Airthings CSV and calculate PM2.5 averages"
+
+# 3. You execute the cells manually
+# 4. For visualizations: Take screenshot → Share with Claude
 ```
 
-### Working with Claude in Notebooks
-
-In VSCode with a Jupyter notebook open:
-
-1. **Use Claude inline**: 
-   - Type your question in a markdown cell
-   - Select the text and press Cmd/Ctrl + K
-   - Ask Claude to analyze or generate code
-
-2. **Generate analysis code**:
-   ```python
-   # Select this comment and ask Claude:
-   # "Load the CSV data I exported from Airthings dashboard and analyze filter efficiency trends"
-   ```
-
-3. **Interactive analysis**:
-   - Run cells with Shift + Enter
-   - Claude can see the output and help iterate
-
-### Example Claude Prompts for Your Analysis
-
-```python
-# Cell 1: Ask Claude
-# "Load my Airthings CSV export and create a DataFrame with proper datetime index"
-
-# Cell 2: Ask Claude  
-# "Calculate daily average PM2.5 and identify days where indoor > outdoor (filter failure)"
-
-# Cell 3: Ask Claude
-# "Create a visualization showing filter efficiency degradation since June 2024"
-
-# Cell 4: Ask Claude
-# "Predict when filter efficiency will drop below 80% based on current trend"
-```
+### Tips
+- Claude Code can update multiple cells at once
+- Export Plotly charts as PNG for Claude to analyze
+- Use `fig.write_image()` to save charts Claude can read later
 
 ## Key Metrics to Track
 
