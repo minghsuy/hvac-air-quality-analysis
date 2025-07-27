@@ -208,12 +208,6 @@ hvac-air-quality/
     └── filter_events.csv     # Track replacements & symptoms
 ```
 
-## Safety Alerts
-
-The script will warn you when:
-- Filter efficiency drops below 85% AND outdoor PM2.5 > 10 μg/m³
-- It's been > 180 days since last filter change
-- Indoor air quality exceeds WHO guidelines
 
 ## Why Outdoor Monitoring Matters
 
