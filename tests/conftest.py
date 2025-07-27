@@ -1,4 +1,5 @@
 """Pytest configuration to add parent directory to path"""
+
 import sys
 from pathlib import Path
 
