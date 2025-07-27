@@ -153,6 +153,23 @@ Track these events in your spreadsheet:
 - Sleep quality changes
 - Allergy flare-ups
 
+## Privacy Considerations
+
+The Jupyter notebook analysis can reveal sensitive information about your household:
+- Daily activity patterns (wake/sleep times)
+- Occupancy schedules (when you're home)
+- Cooking habits and meal times
+- Weekend vs weekday routines
+
+**For public sharing:** Use `analysis.ipynb` with general insights only.
+
+**For private analysis:** Create `local-analysis.ipynb` (gitignored) for detailed pattern analysis:
+```bash
+cp local-analysis-template.ipynb local-analysis.ipynb
+```
+
+This keeps your personal patterns private while sharing useful insights with the community.
+
 ## Local Analysis (Your Computer)
 
 ```bash
