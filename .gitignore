@@ -6,6 +6,8 @@ wiki-repo/
 .env.*
 *.secret
 config/secrets.json
+google-credentials.json
+*-credentials.json
 
 # Python
 __pycache__/
