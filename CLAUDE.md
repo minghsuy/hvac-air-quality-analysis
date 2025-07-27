@@ -385,46 +385,85 @@ All pages: "Save $130-910/year depending on replacement schedule"
 
 ## Release Process and Versioning (Added: July 27, 2025)
 
-### Project Structure
-- Using `src/` layout (package at `src/hvac_air_quality/`)
+### ⚠️ CRITICAL: This is NOT a Packaged Project!
+- **Flat file structure** - Python scripts in root directory
+- **NOT using src/ layout** - Scripts must remain in root for Unifi Gateway
 - **NOT publishing to PyPI** - GitHub releases only
-- Version tracked in `pyproject.toml` and `src/hvac_air_quality/__init__.py`
+- **No package building** - Just archive the scripts
 
-### Versioning Scheme
-- Following Semantic Versioning (MAJOR.MINOR.PATCH)
-- Development versions use `-dev` suffix (e.g., `0.2.0-dev`)
-- Current version: `0.2.0-dev`
+### What Actually Works (Learned the Hard Way)
+1. **Project Structure**: Keep it flat!
+   ```
+   hvac-air-quality-analysis/
+   ├── *.py                    # All Python scripts in root
+   ├── scripts/                # Utility scripts
+   ├── tests/                  # Test files
+   └── .github/workflows/      # CI/CD
+   ```
 
-### Release Automation
-When a tag is pushed (e.g., `v0.2.0`), GitHub Actions will:
-1. Build wheel and sdist packages
-2. Extract release notes from CHANGELOG.md
-3. Create GitHub release with artifacts
-4. **Skip PyPI publishing** (not configured)
+2. **Release Workflow**: Creates ZIP/TAR archives, NOT Python packages
+   ```yaml
+   # This FAILS - don't use!
+   uv build  # ❌ Will fail with "Multiple top-level modules"
+   
+   # This WORKS - use archives!
+   zip -r dist/hvac-air-quality-v0.2.0.zip *.py scripts/ tests/  # ✅
+   ```
 
-### Making a Release
+3. **Version Tracking**: Only in `pyproject.toml` (no __init__.py)
+
+### Release Checklist (Do This EXACTLY)
 ```bash
-# 1. Update version in pyproject.toml and __init__.py (remove -dev)
-# 2. Update CHANGELOG.md
-# 3. Commit and tag
-git tag -a v0.2.0 -m "Release version 0.2.0"
-git push origin v0.2.0
+# 1. Update version in pyproject.toml (remove -dev suffix)
+# 2. Update CHANGELOG.md - move items from Unreleased to new version section
+# 3. Update the comparison links at bottom of CHANGELOG.md
+# 4. Commit changes
+git add -A
+git commit -m "chore(release): prepare for vX.Y.Z"
+git push origin main
+
+# 5. Create and push tag (this triggers release)
+git tag -a vX.Y.Z -m "Release version X.Y.Z"
+git push origin vX.Y.Z
+
+# 6. If release fails, fix the issue, then:
+git tag -d vX.Y.Z                    # Delete local tag
+git push origin :refs/tags/vX.Y.Z    # Delete remote tag
+# Then recreate tag after fixing
 ```
 
-### GitHub Actions Workflows
-- `.github/workflows/test.yml` - Runs on PRs and main branch
-- `.github/workflows/release.yml` - Runs on version tags
-- Uses `uv` for dependency management
-- Tests with Python 3.12 on Ubuntu and macOS
+### Common Release Failures and Fixes
+1. **"Multiple top-level modules" error**
+   - Cause: `uv build` trying to create Python package
+   - Fix: Use ZIP/TAR archives instead
 
-### Code Quality Tools
-- **Formatter**: ruff format (configured for 100 char lines)
-- **Linter**: ruff check
-- **Pre-commit hooks**: Configured but optional
-- **Testing**: pytest with coverage
+2. **Tar command fails**
+   - Cause: Wrong argument order
+   - Fix: `tar --exclude="*.pyc" -czf archive.tar.gz files...`
+
+3. **No release appears**
+   - Cause: Workflow failed
+   - Fix: Check `gh run list --workflow=release.yml`
+
+### pyproject.toml Configuration
+```toml
+[tool.uv]
+package = false  # CRITICAL: Tell uv this isn't a package!
+```
+
+### What Gets Released
+- `hvac-air-quality-vX.Y.Z.zip` - ZIP archive
+- `hvac-air-quality-vX.Y.Z.tar.gz` - Tarball
+- Automated release notes from CHANGELOG.md
+- NO Python wheels or sdist (not a package!)
+
+### GitHub Actions Workflows
+- `.github/workflows/test.yml` - Runs on every push
+- `.github/workflows/release.yml` - Runs on version tags (v*)
+- Uses `uv sync --dev` (NOT `uv build`)
 
 ### Important Notes
 - Author: Ming Yang (not Ming Hsuy)
 - No email in public package metadata for privacy
-- Credentials (`google-credentials.json`) already in .gitignore
-- Wiki repository managed separately (see warnings above)
+- This is a collection of scripts, NOT a Python package
+- Keep the flat structure for Unifi Gateway compatibility
