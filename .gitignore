@@ -20,6 +20,12 @@ env/
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
+# Private/local analysis notebooks
+local-analysis*.ipynb
+private-analysis*.ipynb
+*-local.ipynb
+*-private.ipynb
+
 # Data files (contain personal data)
 data/
 *.csv
