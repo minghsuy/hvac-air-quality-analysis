@@ -321,3 +321,64 @@ from playwright.sync_api import sync_playwright
 **Always check if someone has already solved your problem before building a custom solution.**
 
 In this case, the `docs/compass_artifact_*.md` file had already researched and found the best solutions. Read existing research before implementing!
+
+## Wiki Documentation Best Practices (Learned: July 27, 2025)
+
+### Key Learning: Maintain Coherence Across Wiki Pages
+
+When creating or updating wiki documentation, several issues can arise that break the user experience:
+
+1. **Broken Internal Links**
+   - Always verify linked pages actually exist
+   - Use exact page names (GitHub Wiki is case-sensitive)
+   - Remove references to planned but unimplemented pages
+
+2. **Inconsistent Information**
+   - Cost savings numbers should match across all pages
+   - Timeline descriptions must be clear (e.g., "6 months total, 70 days with MERV 13")
+   - Technical specifications should be identical everywhere mentioned
+
+3. **Navigation Flow**
+   - Each page should link to the next logical step
+   - Add navigation footers: "**Ready for next step?** → [Next Page](Next-Page)"
+   - Ensure circular references don't trap users
+
+4. **Personal Story Integration**
+   - Technical documentation becomes more compelling with personal context
+   - Add "Why This Matters" sections to connect features to real impact
+   - Don't just list specs - explain why you chose them
+
+### Wiki Creation Checklist
+
+Before publishing wiki updates:
+- [ ] Run link checker: `grep -r '\[.*\](' . | grep -v '.git'`
+- [ ] Verify all internal links resolve to actual pages
+- [ ] Check cost/savings numbers are consistent
+- [ ] Ensure timeline descriptions match across pages
+- [ ] Add personal impact sections where relevant
+- [ ] Include navigation footers on each page
+- [ ] Test the user journey from start to finish
+
+### Example: Coherent Cost Messaging
+```markdown
+# Bad - Inconsistent across pages
+Page 1: "Save $910/year"
+Page 2: "Save up to $1000 annually"  
+Page 3: "Savings of $500+"
+
+# Good - Consistent and accurate
+All pages: "Save $130-910/year depending on replacement schedule"
+```
+
+### Example: Clear Timeline Communication
+```markdown
+# Bad - Ambiguous
+"After 6 months with MERV 13 filters"
+
+# Good - Specific
+"After 6 months of total monitoring (including 70 days with MERV 13 filters)"
+```
+
+### The Wiki Coherence Principle
+
+**Every wiki page should stand alone AND work as part of the whole.** Readers might land on any page from search, so provide context while maintaining a coherent narrative across all pages.
