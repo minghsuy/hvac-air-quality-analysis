@@ -1,3 +1,6 @@
+# Wiki repository (separate git repo)
+wiki-repo/
+
 # Environment and secrets
 .env
 .env.*
