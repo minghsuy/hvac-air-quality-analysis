@@ -2,6 +2,8 @@
 
 Smart filter replacement tracking to prevent asthma triggers before they happen.
 
+📚 **[View the Project Wiki](https://github.com/minghsuy/hvac-air-quality-analysis/wiki)** for detailed documentation, analysis results, and hardware setup guides.
+
 ## Quick Setup with UV
 
 ```bash
@@ -25,10 +27,10 @@ EOF
 
 ## Project Timeline
 
-- **Late February 2025**: HVAC installation completed
+- **February 2025**: HVAC installation completed
 - **March 2025**: ERV installation completed
-- **June 2025**: Filter upgrade from MERV 8 to MERV 13
-- **Current**: Monitoring filter efficiency to optimize replacement schedule
+- **May 17, 2025**: Filter upgrade to MERV 13 (both HVAC and ERV)
+- **Current**: 70+ days of excellent performance, monitoring for data-driven replacement
 
 ## Running on Unifi Gateway
 
@@ -143,8 +145,13 @@ In VSCode with a Jupyter notebook open:
 ### Filter Replacement Triggers
 - **Efficiency < 85%**: Start monitoring closely
 - **Efficiency < 80%**: Plan replacement within 2 weeks
-- **Efficiency < 75%**: Replace immediately
-- **Indoor PM2.5 > 12 μg/m³**: Replace regardless of efficiency
+- **Indoor PM2.5 > 5 μg/m³ consistently**: Consider replacement
+- **Indoor PM2.5 > 12 μg/m³**: Replace immediately (WHO guideline)
+
+### Current Performance (July 2025)
+- **Filter efficiency**: ~71% reduction in PM2.5 vs pre-MERV 13
+- **Indoor PM2.5**: 0.29 μg/m³ average (40x better than WHO standards)
+- **Cost projection**: $130/year (vs $260-$1040/year without data)
 
 ### Health Correlation
 Track these events in your spreadsheet:
@@ -176,12 +183,15 @@ This keeps your personal patterns private while sharing useful insights with the
 # Activate environment
 source .venv/bin/activate
 
-# Start Jupyter
-jupyter notebook
-
-# Open analysis.ipynb in VSCode instead for Claude integration
+# Open analysis notebook in VSCode for Claude integration
 code analysis.ipynb
 ```
+
+### Available Analysis Notebooks
+- `analysis.ipynb` - Main analysis notebook with 6 months of historical data
+- `local-analysis-template.ipynb` - Template for private household pattern analysis
+
+📊 **[See Analysis Results](https://github.com/minghsuy/hvac-air-quality-analysis/wiki/Analysis-Results)** in the wiki for key findings and visualizations.
 
 ## Project Structure
 
@@ -204,17 +214,32 @@ The script will warn you when:
 - It's been > 180 days since last filter change
 - Indoor air quality exceeds WHO guidelines
 
+## Why Outdoor Monitoring Matters
+
+Without outdoor PM2.5 data, you can't calculate true filter efficiency:
+- **Filter Efficiency = (Outdoor - Indoor) / Outdoor × 100%**
+- Indoor-only monitoring leads to guessing and wasted money
+- One outdoor sensor (AirGradient) pays for itself by preventing just one early replacement
+
 ## Next Steps
 
-1. Set up data collection on Unifi Gateway
-2. Import your historical CSV data
-3. Run analysis to establish baseline degradation rate
-4. Set up alerts for predictive replacement
+1. ✅ Data collection running on Unifi Gateway (every 5 minutes)
+2. ✅ 6 months of historical data analyzed
+3. 🔄 Adding outdoor AirGradient sensor for true efficiency tracking
+4. 📊 Real-time monitoring via Google Sheets
 
-Remember: **The goal is to replace filters BEFORE symptoms appear!**
+Remember: **The goal is to replace filters based on actual performance, not arbitrary schedules!**
 
-## Need Help?
+## Documentation
 
+### 📚 [GitHub Wiki](https://github.com/minghsuy/hvac-air-quality-analysis/wiki)
+- [Hardware Setup](https://github.com/minghsuy/hvac-air-quality-analysis/wiki/Hardware-Setup) - Airthings + AirGradient configuration
+- [Data Collection](https://github.com/minghsuy/hvac-air-quality-analysis/wiki/Data-Collection) - Automated monitoring setup
+- [Analysis Results](https://github.com/minghsuy/hvac-air-quality-analysis/wiki/Analysis-Results) - Key findings from 6 months of data
+- [Analysis Techniques](https://github.com/minghsuy/hvac-air-quality-analysis/wiki/Analysis-Techniques) - Data science methods used
+
+### 🛠️ Setup Guides
 - 🔧 [Troubleshooting Guide](TROUBLESHOOTING.md) - Common issues and solutions
 - 🚀 [Quick Start Guide](START_HERE.md) - 30-minute setup
 - 🔐 [SSH Setup Guide](ssh_into_uni_fi_cloud_gateway_ultra.md) - Unifi Gateway access
+- 📊 [Google Sheets Setup](docs/google-form-setup.md) - Form-based data logging
