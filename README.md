@@ -149,8 +149,9 @@ In VSCode with a Jupyter notebook open:
 - **Indoor PM2.5 > 12 μg/m³**: Replace immediately (WHO guideline)
 
 ### Current Performance (July 2025)
-- **Filter efficiency**: ~71% reduction in PM2.5 vs pre-MERV 13
-- **Indoor PM2.5**: 0.29 μg/m³ average (40x better than WHO standards)
+- **Filter age**: 70 days since MERV 13 installation (May 17)
+- **PM2.5 reduction**: 71% vs pre-MERV 13 period
+- **Indoor PM2.5**: 0.38 μg/m³ average post-MERV 13
 - **Cost projection**: $130/year (vs $260-$1040/year without data)
 
 ### Health Correlation
@@ -218,17 +219,31 @@ The script will warn you when:
 
 Without outdoor PM2.5 data, you can't calculate true filter efficiency:
 - **Filter Efficiency = (Outdoor - Indoor) / Outdoor × 100%**
-- Indoor-only monitoring leads to guessing and wasted money
-- One outdoor sensor (AirGradient) pays for itself by preventing just one early replacement
+- **Airthings limitation**: Only whole numbers (0, 1, 2, 3...) for PM2.5
+- Indoor "0" → 100% efficiency (meaningless!)
+- Indoor "1" vs "0" → Efficiency swings from 70% to 100%
+- **Solution**: AirGradient provides 0.01 μg/m³ precision
 
-## Next Steps
+## Current Status (July 2025)
 
-1. ✅ Data collection running on Unifi Gateway (every 5 minutes)
-2. ✅ 6 months of historical data analyzed
-3. 🔄 Adding outdoor AirGradient sensor for true efficiency tracking
-4. 📊 Real-time monitoring via Google Sheets
+### What's Working
+1. ✅ Unifi Gateway collecting data every 5 minutes
+2. ✅ 6 months of Airthings data analyzed
+3. ✅ AirGradient outdoor sensor installed (July 26)
+4. ✅ Logging to Google Sheets for tracking
 
-Remember: **The goal is to replace filters based on actual performance, not arbitrary schedules!**
+### Recent Discovery
+July 26 data revealed efficiency calculations are **meaningless** at low PM2.5:
+- Efficiency swings from 8.8% to 100% in minutes
+- Same filter, different readings due to rounding
+- Need 30+ days of outdoor data to establish patterns
+
+### Next Steps
+- Collect outdoor baseline for your area
+- Develop thresholds based on absolute values
+- Build alerts (not percentages!) for replacement
+
+Remember: **With Airthings' whole number precision, percentage-based efficiency is useless!**
 
 ## Documentation
 
