@@ -181,6 +181,15 @@ Always use generic placeholders (XX, X.XX) in documentation and examples. Check 
 ### Lesson Learned
 Don't assume wiki pages can be managed from main repo - they're separate! Always check which directory/repo you're working in. The wiki is its own git repository with its own commit history.
 
+### ⚠️ Wiki Repository Critical Warning
+**See global CLAUDE.md (`~/.claude/CLAUDE.md`) for critical warnings about wiki-repo management!**
+
+Quick reminder:
+- `wiki-repo/` is a SEPARATE Git repository
+- NEVER `git add wiki-repo` or `git rm --cached wiki-repo`
+- It's already in .gitignore for safety
+- When in doubt, check the global CLAUDE.md for full wiki safety guidelines
+
 ## Plotly X-Axis Date Formatting (Learned: July 27, 2025)
 
 ### Problem
