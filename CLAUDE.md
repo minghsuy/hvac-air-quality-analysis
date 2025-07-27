@@ -127,6 +127,39 @@ The system aims to prevent asthma symptoms by replacing filters before efficienc
 
 Always use generic placeholders (XX, X.XX) in documentation and examples. Check all commits for accidentally exposed network information before pushing to public repositories.
 
+## Package Management (Critical Reminder)
+
+### ⚠️ This Project Uses UV, NOT pip!
+- **Package manager**: `uv` (https://github.com/astral-sh/uv)
+- **NO requirements.txt** - Dependencies in pyproject.toml
+- **NO pip install** - Use `uv sync` or `uv pip install`
+- **Virtual environment**: `uv venv --python 3.12`
+
+### Correct Commands:
+```bash
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Set up environment
+uv venv --python 3.12
+source .venv/bin/activate
+uv sync --dev
+
+# Add a package
+uv add package-name
+
+# Install from pyproject.toml
+uv sync
+```
+
+### NEVER suggest:
+- `pip install -r requirements.txt` ❌
+- `pip install package` ❌
+- Creating requirements.txt ❌
+- Using pip for anything ❌
+
+**Exception**: On Unifi Gateway, pip3 is used because uv isn't available there.
+
 ## GitHub Wiki Management (Learned: July 27, 2025)
 
 ### Key Learnings About GitHub Wiki
