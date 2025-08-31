@@ -32,7 +32,9 @@ def get_airthings_token():
         "scope": ["read:device:current_values"],
     }
 
-    response = requests.post("https://accounts-api.airthings.com/v1/token", json=payload, timeout=10)
+    response = requests.post(
+        "https://accounts-api.airthings.com/v1/token", json=payload, timeout=10
+    )
     response.raise_for_status()
     return response.json()["access_token"]
 
@@ -87,7 +89,7 @@ def get_airgradient_data():
             "nox": data.get("noxIndex", 0),
             "raw_data": data,  # Keep full data for debugging
         }
-    except Exception as e:
+    except Exception:
         # Sanitize error message to avoid information disclosure
         print("Failed to get AirGradient data: Connection error")
         # Log full error for debugging if needed
@@ -136,7 +138,7 @@ def send_to_google_sheets(data):
     try:
         response = requests.post(form_url, data=form_data, timeout=10)
         return response.status_code == 200
-    except Exception as e:
+    except Exception:
         # Sanitize error message to avoid information disclosure
         print("Failed to send to Google Sheets: Submission error")
         # Log full error for debugging if needed
@@ -201,6 +203,7 @@ def main():
 
     # Save locally as backup with secure permissions
     import stat
+
     temp_file = "/tmp/air_quality_latest.json"
     with open(temp_file, "w") as f:
         json.dump(log_data, f)
