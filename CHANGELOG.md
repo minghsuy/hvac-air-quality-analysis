@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-08-30
+
+### Added
+- Multi-sensor support for tracking multiple rooms independently
+- Google Sheets API direct writing (replacing Forms for better scalability)
+- Second bedroom monitoring with AirGradient indoor sensor
+- Dynamic IP resolution for AirGradient sensors on Ubiquiti
+- Wrapper script for .local domain issues on Ubiquiti Gateway
+- Comprehensive data analysis scripts for filter change impact
+- Google Apps Script for automated monitoring and alerts
+- Room-specific efficiency calculations
+- Sensor discovery and configuration system (sensors.json)
+
+### Changed
+- Switched from Google Forms to Sheets API for multi-sensor data structure
+- Data now includes room identification for each sensor reading
+- Updated collection to handle both Airthings and AirGradient indoor sensors
+- Improved error handling for network connectivity issues
+- Enhanced documentation with multi-sensor setup instructions
+
+### Fixed
+- Data collection outage caused by Ubiquiti firmware update removing cron job
+- Ubiquiti Gateway mDNS resolution issues with .local domains
+- Timestamp handling for proper timezone support
+- Filter efficiency calculation accuracy at low PM2.5 levels
+
+### Discovered
+- Ubiquiti firmware updates can wipe custom cron jobs and scripts
+- Need monitoring to detect when collection stops (implemented in Apps Script)
+- Low outdoor PM2.5 (<5 μg/m³) makes efficiency percentage unreliable
+- Ubiquiti Gateway requires special handling for Python dependencies
+
 ## [0.2.0] - 2025-07-27
 
 ### Added
@@ -52,6 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health correlation tracking capabilities
 - 5-minute automated data collection via cron
 
-[Unreleased]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/minghsuy/hvac-air-quality-analysis/releases/tag/v0.1.0

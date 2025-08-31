@@ -1,6 +1,6 @@
 [project]
 name = "hvac-air-quality"
-version = "0.3.0-dev"
+version = "0.3.0"
 description = "Track HVAC filter efficiency to prevent asthma triggers"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -20,6 +20,8 @@ dependencies = [
     "google-auth-httplib2>=0.2.0",
     "google-auth-oauthlib>=1.2.1",
     "schedule>=1.2.2",
+    "scipy>=1.16.1",
+    "pytz>=2025.2",
 ]
 
 [project.scripts]

@@ -1,8 +1,15 @@
 # HVAC Air Quality Monitoring
 
-Smart filter replacement tracking to prevent asthma triggers before they happen.
+Multi-sensor smart filter replacement tracking to prevent asthma triggers before they happen.
 
 📚 **[View the Project Wiki](https://github.com/minghsuy/hvac-air-quality-analysis/wiki)** for detailed documentation, analysis results, and hardware setup guides.
+
+## 🚨 Latest Updates (August 30, 2025)
+
+- ✅ **Data collection restored** after 22-day outage (cron job was missing!)
+- ✅ **Multi-sensor support deployed**: Now tracking master bedroom (Airthings) and second bedroom (AirGradient) separately
+- ✅ **Switched to Google Sheets API**: Better data structure with room identification
+- ✅ **New filter installed Aug 29**: Showing excellent performance (85-100% efficiency)
 
 ## Quick Setup with UV
 

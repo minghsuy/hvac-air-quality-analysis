@@ -127,6 +127,39 @@ The system aims to prevent asthma symptoms by replacing filters before efficienc
 
 Always use generic placeholders (XX, X.XX) in documentation and examples. Check all commits for accidentally exposed network information before pushing to public repositories.
 
+## Multi-Sensor Data Collection (Learned: August 30, 2025)
+
+### Key Issues Discovered
+1. **Data collection stopped Aug 8, 2025** - No cron job was set up!
+2. **Ubiquiti doesn't resolve .local domains** - mDNS/Bonjour not available
+3. **Google Forms inadequate for multi-sensor** - No room identification
+
+### Solutions Implemented
+1. **Cron job setup**:
+   ```bash
+   */5 * * * * /usr/bin/python3 /data/scripts/collect_multi_fixed.py >> /data/logs/air_quality.log 2>&1
+   ```
+
+2. **Fixed IP wrapper for Ubiquiti**:
+   - Created `collect_multi_fixed.py` that replaces .local with IPs
+   - AirGradient sensors use DHCP but have consistent IPs
+
+3. **Google Sheets API instead of Forms**:
+   - Multiple rows per timestamp (one per sensor)
+   - Room identification in data
+   - Better for analysis and ML
+
+### Ubiquiti Gateway Specifics
+- **No pip by default**: Install with `apt install python3-pip`
+- **No mDNS**: Must use IP addresses or /etc/hosts
+- **Persistent storage**: Use `/data/scripts/` (survives reboots)
+- **Logs**: Use `/data/logs/` for output
+
+### Data Analysis Insights
+- **Low outdoor PM2.5 makes efficiency % unreliable**
+- When outdoor < 5 μg/m³, focus on absolute indoor values
+- 71% efficiency with new filter is normal when outdoor air is clean
+
 ## Package Management (Critical Reminder)
 
 ### ⚠️ This Project Uses UV, NOT pip!
