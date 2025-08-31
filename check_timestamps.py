@@ -8,7 +8,7 @@ from datetime import datetime
 import pytz
 
 # Read the sample data
-df = pd.read_csv('/tmp/sheets_sample.csv')
+df = pd.read_csv("/tmp/sheets_sample.csv")
 
 print("=" * 60)
 print("TIMESTAMP ANALYSIS")
@@ -20,7 +20,7 @@ print("Column 1 (form format):", df.iloc[:5, 0].values)
 print("Column 2 (ISO format):", df.iloc[:5, 1].values)
 
 # Parse both timestamp formats
-ts1 = pd.to_datetime(df.iloc[:, 0], format='%m/%d/%Y %H:%M:%S')
+ts1 = pd.to_datetime(df.iloc[:, 0], format="%m/%d/%Y %H:%M:%S")
 ts2 = pd.to_datetime(df.iloc[:, 1])
 
 print("\n" + "=" * 60)
@@ -42,10 +42,10 @@ print("\n" + "=" * 60)
 print("CURRENT TIME CONTEXT")
 print("=" * 60)
 
-now_pdt = datetime.now(pytz.timezone('America/Los_Angeles'))
+now_pdt = datetime.now(pytz.timezone("America/Los_Angeles"))
 print(f"\nCurrent time (PDT): {now_pdt}")
 print(f"Today's date: {now_pdt.date()}")
-print(f"Yesterday: {now_pdt.date().replace(day=now_pdt.day-1)}")
+print(f"Yesterday: {now_pdt.date().replace(day=now_pdt.day - 1)}")
 
 # If you changed filter yesterday at 2pm PDT
 filter_change_pdt = now_pdt.replace(day=29, hour=14, minute=0, second=0, microsecond=0)
@@ -57,14 +57,14 @@ print("DATA AROUND FILTER CHANGE")
 print("=" * 60)
 
 # Convert sample timestamps to compare
-ts_naive = pd.to_datetime(df.iloc[:, 0], format='%m/%d/%Y %H:%M:%S')
+ts_naive = pd.to_datetime(df.iloc[:, 0], format="%m/%d/%Y %H:%M:%S")
 
 # Find data points around Aug 29, 2pm
-aug29_start = pd.Timestamp('2025-08-29 12:00:00')
-aug29_end = pd.Timestamp('2025-08-29 18:00:00')
+aug29_start = pd.Timestamp("2025-08-29 12:00:00")
+aug29_end = pd.Timestamp("2025-08-29 18:00:00")
 
 # Since we only have last 100 rows, check the date range
-print(f"\nData range in sample:")
+print("\nData range in sample:")
 print(f"  Earliest: {ts_naive.min()}")
 print(f"  Latest: {ts_naive.max()}")
 
@@ -76,7 +76,7 @@ else:
     around_change = df[mask]
     if len(around_change) > 0:
         print(f"\n✅ Found {len(around_change)} data points around filter change:")
-        print(around_change[['Timestamp', 'Filter Efficiency', 'Indoor PM2.5', 'Outdoor PM2.5']])
+        print(around_change[["Timestamp", "Filter Efficiency", "Indoor PM2.5", "Outdoor PM2.5"]])
 
 print("\n" + "=" * 60)
 print("RECOMMENDATIONS")
