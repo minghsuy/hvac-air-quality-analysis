@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Comprehensive data dictionary (DATA_DICTIONARY.md) defining all fields and units
+- Google Sheets schema migration tools for converting 14-column to 18-column format
+- Migration guide (SHEETS_MIGRATION_GUIDE.md) with step-by-step instructions
+- Data validation script to ensure compliance with data dictionary
+- Updated Google Apps Script for new 18-column schema with alerts
+- Test suite for Airthings API and Google Sheets integration
+
+### Changed
+- Migrated 3,985 rows from old Google Forms schema to new Sheets API schema
+- Updated collector to write to specific sheet tab (Cleaned_Data_20250831)
+- Switched to using compensated values from AirGradient (pm02Compensated, atmpCompensated)
+- Standardized data types: numeric values with empty strings for missing data
+- Store radon in native API units (Bq/m³) instead of display units (pCi/L)
+
+### Fixed
+- Airthings API response parsing for new "results" structure (was "sensors")
+- AirGradient field names to use correct camelCase (tvocIndex, noxIndex)
+- Filter efficiency calculation using compensated PM2.5 values
+- Data type consistency issues between string and numeric values
+- Unit conversion confusion for radon measurements
+
+### Security
+- Removed hardcoded MAC addresses and serial numbers from test files
+- Fixed all bare except statements to specify exception types
+- Added proper environment variable usage for sensor identifiers
+
 ## [0.3.0] - 2025-08-30
 
 ### Added
