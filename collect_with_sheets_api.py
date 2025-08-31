@@ -56,8 +56,8 @@ def get_sheets_service():
         )
         service = build("sheets", "v4", credentials=creds)
         return service
-    except Exception as e:
-        print(f"Failed to create Sheets service: {e}")
+    except Exception:
+        print("Failed to create Sheets service")
         return None
 
 
@@ -125,8 +125,8 @@ def append_to_sheet(service, spreadsheet_id, values):
         )
 
         return result.get("updates", {}).get("updatedRows", 0) > 0
-    except Exception as e:
-        print(f"Failed to append to sheet: {e}")
+    except Exception:
+        print("Failed to append to sheet")
         return False
 
 
@@ -142,13 +142,14 @@ def get_airthings_data():
                 "client_secret": AIRTHINGS_CLIENT_SECRET,
                 "scope": ["read:device:current_values"],
             },
+            timeout=10,
         )
         token = response.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
         # Get accounts
         accounts = requests.get(
-            "https://consumer-api.airthings.com/v1/accounts", headers=headers
+            "https://consumer-api.airthings.com/v1/accounts", headers=headers, timeout=10
         ).json()
 
         account_id = accounts["accounts"][0]["id"]
@@ -159,6 +160,7 @@ def get_airthings_data():
             f"https://consumer-api.airthings.com/v1/accounts/{account_id}/sensors",
             headers=headers,
             params=params,
+            timeout=10,
         ).json()
 
         # Extract metrics
@@ -179,8 +181,8 @@ def get_airthings_data():
                 "humidity": data.get("humidity", 0),
                 "radon": data.get("radon", 0),
             }
-    except Exception as e:
-        print(f"Airthings error: {e}")
+    except Exception:
+        print("Airthings API error")
         return None
 
 
@@ -203,8 +205,8 @@ def get_airgradient_data(serial, room):
             "humidity": data.get("rhumCompensated", 0),
             "radon": 0,  # AirGradient doesn't have radon
         }
-    except Exception as e:
-        print(f"AirGradient {room} error: {e}")
+    except Exception:
+        print(f"AirGradient {room} connection error")
         return None
 
 

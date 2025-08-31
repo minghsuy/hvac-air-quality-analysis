@@ -32,7 +32,7 @@ def get_airthings_token():
         "scope": ["read:device:current_values"],
     }
 
-    response = requests.post("https://accounts-api.airthings.com/v1/token", json=payload)
+    response = requests.post("https://accounts-api.airthings.com/v1/token", json=payload, timeout=10)
     response.raise_for_status()
     return response.json()["access_token"]
 
@@ -44,7 +44,7 @@ def get_airthings_data():
 
     # Get account ID
     accounts = requests.get(
-        "https://consumer-api.airthings.com/v1/accounts", headers=headers
+        "https://consumer-api.airthings.com/v1/accounts", headers=headers, timeout=10
     ).json()
 
     account_id = accounts["accounts"][0]["id"]
@@ -55,6 +55,7 @@ def get_airthings_data():
         f"https://consumer-api.airthings.com/v1/accounts/{account_id}/sensors",
         headers=headers,
         params=params,
+        timeout=10,
     ).json()
 
     # Extract key metrics
@@ -87,7 +88,10 @@ def get_airgradient_data():
             "raw_data": data,  # Keep full data for debugging
         }
     except Exception as e:
-        print(f"Failed to get AirGradient data: {e}")
+        # Sanitize error message to avoid information disclosure
+        print("Failed to get AirGradient data: Connection error")
+        # Log full error for debugging if needed
+        # print(f"Debug: {e}")
         return None
 
 
@@ -130,10 +134,13 @@ def send_to_google_sheets(data):
     form_data = {k: v for k, v in form_data.items() if k}
 
     try:
-        response = requests.post(form_url, data=form_data)
+        response = requests.post(form_url, data=form_data, timeout=10)
         return response.status_code == 200
     except Exception as e:
-        print(f"Failed to send to Google Sheets: {e}")
+        # Sanitize error message to avoid information disclosure
+        print("Failed to send to Google Sheets: Submission error")
+        # Log full error for debugging if needed
+        # print(f"Debug: {e}")
         return False
 
 
@@ -192,9 +199,13 @@ def main():
     else:
         print("✗ Failed to send to Google Sheets")
 
-    # Save locally as backup
-    with open("/tmp/air_quality_latest.json", "w") as f:
+    # Save locally as backup with secure permissions
+    import stat
+    temp_file = "/tmp/air_quality_latest.json"
+    with open(temp_file, "w") as f:
         json.dump(log_data, f)
+    # Set file permissions to 600 (read/write for owner only)
+    os.chmod(temp_file, stat.S_IRUSR | stat.S_IWUSR)
 
 
 if __name__ == "__main__":
