@@ -15,7 +15,7 @@ wiki_images.mkdir(parents=True, exist_ok=True)
 # Load the data (same as in notebook)
 print("Loading data...")
 df = pd.read_csv(
-    "data/raw/XXXXXXXXXX-ef468877-4d70-4a2a-9116-e0328c83d1fe-iaq.csv", delimiter=";", decimal=","
+    "data/raw/airthings-export.csv", delimiter=";", decimal=","  # Replace with your actual filename
 )
 
 # Parse and clean data

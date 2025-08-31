@@ -52,16 +52,30 @@ pip freeze > requirements.txt  # NO!
 - GitHub releases create ZIP/TAR archives, NOT wheels
 - `pyproject.toml` has `package = false` 
 
-## 🔒 Security: Never Expose Network Info
+## 🔒 Security: STOP! Check Before EVERY Commit
+
+### Before EVERY git add:
+```bash
+# RUN THIS CHECK FIRST - ALWAYS!
+grep -r "192\.168\." . --exclude-dir=.git
+grep -r "d8:3b:da" . --exclude-dir=.git  
+grep -r "d83bda" . --exclude-dir=.git
+grep -r "@.*\.com" . --exclude-dir=.git
+
+# If ANY results show up, YOU MUST fix them before committing!
+```
 
 **NEVER commit:**
 - Device MAC addresses (d8:3b:da:XX:XX:XX)
 - Local IP addresses (192.168.X.XX)  
-- Device serial numbers
+- Device serial numbers (2960XXXXXX)
 - API keys or credentials
 - Personal email addresses
 
-**Always use:** Generic placeholders in docs/examples
+**Replace with:**
+- `192.168.X.XX` for IPs
+- `XXXXXX` for serials/MACs
+- `your_value_here` for credentials
 
 ## ⚠️ Wiki Repository Management
 

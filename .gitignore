@@ -1,6 +1,10 @@
 # Wiki repository (separate git repo)
 wiki-repo/
 
+# SECURITY - Files with real IPs/MACs (use templates instead)
+collect_multi_fixed.py
+sensors.json
+
 # Environment and secrets
 .env
 .env.*

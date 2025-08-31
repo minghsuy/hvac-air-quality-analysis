@@ -11,10 +11,10 @@ original_get = requests.get
 
 def requests_get_fixed(url, *args, **kwargs):
     # Replace .local URLs with fixed IPs
-    if "airgradient_XXXXXX.local" in url:
-        url = url.replace("airgradient_XXXXXX.local", "192.168.X.XX")
-    elif "airgradient_XXXXXX.local" in url:
-        url = url.replace("airgradient_XXXXXX.local", "192.168.X.XX")
+    if "airgradient_OUTDOOR_SERIAL.local" in url:
+        url = url.replace("airgradient_OUTDOOR_SERIAL.local", "192.168.X.XX")  # Configure your outdoor IP
+    elif "airgradient_INDOOR_SERIAL.local" in url:
+        url = url.replace("airgradient_INDOOR_SERIAL.local", "192.168.X.XX")  # Configure your indoor IP
     return original_get(url, *args, **kwargs)
 
 

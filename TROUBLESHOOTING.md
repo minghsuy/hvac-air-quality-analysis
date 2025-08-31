@@ -113,7 +113,7 @@ arp -a | grep -i 'd8:3b:da'
 **Option C: Scan the network**
 ```bash
 # If nmap is available
-nmap -sn 192.168.20.0/24 | grep -B2 -i "d8:3b:da"
+nmap -sn 192.168.X.0/24 | grep -B2 -i "d8:3b:da"
 ```
 
 ---

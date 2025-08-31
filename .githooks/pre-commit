@@ -1,0 +1,58 @@
+#!/bin/bash
+# Pre-commit hook to prevent exposing sensitive information
+
+echo "🔒 Checking for sensitive information..."
+
+# Check for private IPs (exclude virtual env and dependencies)
+if grep -r "192\.168\.[0-9]\+\.[0-9]\+" . \
+    --exclude-dir=.git \
+    --exclude-dir=.githooks \
+    --exclude-dir=.venv \
+    --exclude-dir=venv \
+    --exclude-dir=node_modules \
+    --exclude-dir=dist \
+    --exclude="*.pyc" \
+    | grep -v "192.168.X.X" \
+    | grep -v "192.168.0.0/16" \
+    | grep -v "192.168.0.0/24"; then
+    echo "❌ ERROR: Private IP addresses found! Replace with 192.168.X.XX"
+    exit 1
+fi
+
+# Check for MAC addresses
+if grep -r "d8:3b:da:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]" . --exclude-dir=.git --exclude-dir=.githooks; then
+    echo "❌ ERROR: MAC addresses found! Replace with XX:XX:XX"
+    exit 1
+fi
+
+# Check for partial MACs (like in your code) - exclude .env and gitignored files
+if grep -r "d83bda[0-9a-f]\{6\}" . \
+    --exclude-dir=.git \
+    --exclude-dir=.githooks \
+    --exclude-dir=.venv \
+    --exclude=".env" \
+    --exclude="*.env" \
+    --exclude="sensors.json" \
+    | grep -v "XXXXXX"; then
+    echo "❌ ERROR: Device serials found! Replace with XXXXXX"
+    exit 1
+fi
+
+# Check for Airthings serial (only in our source files)
+if grep -r "2960[0-9]\{6\}" . \
+    --exclude-dir=.git \
+    --exclude-dir=.githooks \
+    --exclude-dir=.venv \
+    --exclude-dir=venv \
+    --exclude-dir=node_modules \
+    --exclude="*.csv" \
+    --exclude="*.json" \
+    --exclude=".env" \
+    --exclude="*.ipynb" \
+    | grep -v "2960XXXXXX"; then
+    echo "❌ ERROR: Airthings serial found! Replace with 2960XXXXXX"
+    exit 1
+fi
+
+echo "✅ No sensitive information detected"
+exit 0

@@ -42,7 +42,7 @@ AIRTHINGS_CLIENT_ID = os.environ.get("AIRTHINGS_CLIENT_ID")
 AIRTHINGS_CLIENT_SECRET = os.environ.get("AIRTHINGS_CLIENT_SECRET")
 AIRTHINGS_DEVICE_SERIAL = os.environ.get("AIRTHINGS_DEVICE_SERIAL")
 AIRGRADIENT_OUTDOOR_SERIAL = os.environ.get("AIRGRADIENT_SERIAL")
-AIRGRADIENT_INDOOR_SERIAL = os.environ.get("AIRGRADIENT_INDOOR_SERIAL", "XXXXXX")
+AIRGRADIENT_INDOOR_SERIAL = os.environ.get("AIRGRADIENT_INDOOR_SERIAL")  # Configure in .env
 
 
 def find_airgradient_ip(mac_suffix):
@@ -57,7 +57,7 @@ def find_airgradient_ip(mac_suffix):
 
         for line in lines:
             if mac_suffix.lower() in line.lower():
-                # Extract IP from line like: ? (192.168.X.XX) at XX:XX:XX:XX:XX:XX
+                # Extract IP from line like: ? (192.168.X.XX) at d8:3b:da:XX:XX:XX
                 parts = line.split()
                 for part in parts:
                     if part.startswith("(") and part.endswith(")"):
@@ -69,7 +69,7 @@ def find_airgradient_ip(mac_suffix):
         # Method 2: Try to ping the network and refresh ARP
         # This is a bit aggressive but works on small networks
         print(f"Scanning network for {mac_suffix}...")
-        subnet = os.environ.get("NETWORK_SUBNET", "192.168.20")  # Customize in .env if needed
+        subnet = os.environ.get("NETWORK_SUBNET", "192.168.X")  # Customize in .env if needed
 
         for i in range(1, 255):
             ip = f"{subnet}.{i}"
