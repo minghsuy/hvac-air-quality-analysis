@@ -266,7 +266,7 @@ class TestMainFlow:
 
         mock_sheets.return_value = True
 
-        with patch("builtins.open", create=True):
+        with patch("builtins.open", create=True), patch("os.chmod"):
             collect_air_quality.main()
 
         # Verify APIs were called
@@ -291,7 +291,8 @@ class TestMainFlow:
         """Test when Airthings API fails"""
         mock_airthings.return_value = None
 
-        collect_air_quality.main()
+        with patch("builtins.open", create=True), patch("os.chmod"):
+            collect_air_quality.main()
 
         # Verify error message
         print_calls = [str(call[0][0]) for call in mock_print.call_args_list]
