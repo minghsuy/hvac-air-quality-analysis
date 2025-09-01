@@ -89,9 +89,21 @@ else:
 
 ## Alert Thresholds
 
-- **Filter Efficiency < 85%**: Warning
-- **Filter Efficiency < 80%**: Critical - Replace filter
-- **Indoor PM2.5 > 12 μg/m³**: WHO guideline exceeded
+### Filter Efficiency
+- **< 85%**: Warning - Monitor closely
+- **< 80%**: Critical - Plan replacement
+- **< 75%**: Urgent - Replace immediately
+
+### Indoor Air Quality
+- **PM2.5 > 12 μg/m³**: WHO annual guideline exceeded
+- **PM2.5 > 25 μg/m³**: WHO 24-hour guideline exceeded
+- **CO2 > 1000 ppm**: Ventilation recommended
+- **CO2 > 2000 ppm**: Poor ventilation - immediate action needed
+
+### Smart Alerting (v0.4.0)
+- **High Confidence**: Outdoor PM2.5 > 10 μg/m³ (reliable baseline)
+- **Medium Confidence**: Outdoor PM2.5 5-10 μg/m³
+- **Low Confidence**: Outdoor PM2.5 < 5 μg/m³ (suppressed during activity hours)
 
 ## Data Quality Notes
 
@@ -102,6 +114,15 @@ else:
 
 ## Schema Version
 
-- **Version**: 2.0
-- **Date**: 2025-08-31
-- **Breaking Change from v1**: Added Sensor_ID, Room, Sensor_Type, Indoor_NOX columns
+- **Version**: 2.1
+- **Date**: 2025-09-01
+- **Changes in v2.1**: Added smart alerting thresholds, clarified WHO guidelines
+- **Breaking Change from v1.0**: Added Sensor_ID, Room, Sensor_Type, Indoor_NOX columns (v2.0)
+
+## Implementation Status
+
+- ✅ Data collection to 18-column schema (v0.4.0)
+- ✅ Multi-room support with sensor identification
+- ✅ Smart alerting with confidence levels
+- ✅ Median-based spike filtering
+- ✅ Activity hour suppression for low-confidence alerts

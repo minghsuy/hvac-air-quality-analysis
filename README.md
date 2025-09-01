@@ -1,233 +1,179 @@
-# HVAC Air Quality Monitoring
+# HVAC Air Quality Monitoring System
 
-Multi-sensor smart filter replacement tracking to prevent asthma triggers before they happen.
+**Real-time filter efficiency tracking to prevent asthma triggers before they happen.**
 
-📚 **[View the Project Wiki](https://github.com/minghsuy/hvac-air-quality-analysis/wiki)** for detailed documentation, analysis results, and hardware setup guides.
+[![Release](https://img.shields.io/github/v/release/minghsuy/hvac-air-quality-analysis)](https://github.com/minghsuy/hvac-air-quality-analysis/releases)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## 🚨 Latest Updates (August 30, 2025)
+## 🎯 Why This Matters
 
-- ✅ **Data collection restored** after 22-day outage (cron job was missing!)
-- ✅ **Multi-sensor support deployed**: Now tracking master bedroom (Airthings) and second bedroom (AirGradient) separately
-- ✅ **Switched to Google Sheets API**: Better data structure with room identification
-- ✅ **New filter installed Aug 29**: Showing excellent performance (85-100% efficiency)
+After experiencing recurring asthma symptoms correlated with degraded HVAC filter performance, I built this system to:
+- **Predict filter replacement timing** based on actual efficiency, not arbitrary schedules
+- **Prevent health issues** by replacing filters before efficiency drops below safe thresholds
+- **Save money** by extending filter life when efficiency remains high
+- **Track multiple rooms** independently for targeted air quality management
 
-## Quick Setup with UV
+## 📊 Current Status (v0.4.0 - September 2025)
+
+- ✅ **Smart alerting deployed** with confidence-based notifications
+- ✅ **Schema migration complete** - 3,985 historical rows preserved
+- ✅ **Multi-room monitoring active** - Master & second bedrooms tracked
+- ✅ **Filter efficiency stable** at 85-100% after 70+ days on MERV 13
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.12+
+- [uv package manager](https://github.com/astral-sh/uv)
+- Airthings API credentials
+- Google Service Account (for Sheets API)
+- (Optional) AirGradient sensors for outdoor monitoring
+
+### Installation
 
 ```bash
-# Install uv if you haven't already
+# Clone repository
+git clone https://github.com/minghsuy/hvac-air-quality-analysis.git
+cd hvac-air-quality-analysis
+
+# Install uv if needed
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Create project and virtual environment
+# Create virtual environment and install dependencies
 uv venv --python 3.12
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+source .venv/bin/activate
+uv sync --dev
 
-# Install dependencies
-uv pip install -e .
+# Configure environment
+cp .env.example .env
+# Edit .env with your credentials
+```
 
-# Create .env file
-cat > .env << EOF
+## 📡 System Architecture
+
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  Airthings   │     │ AirGradient  │     │ AirGradient  │
+│   (Indoor)   │     │  (Outdoor)   │     │  (Indoor #2) │
+└──────┬───────┘     └──────┬───────┘     └──────┬───────┘
+       │                    │                     │
+       └────────────────────┴─────────────────────┘
+                           │
+                    ┌──────▼───────┐
+                    │ Unifi Gateway │
+                    │   (Collector) │
+                    └──────┬───────┘
+                           │
+                    ┌──────▼───────┐
+                    │ Google Sheets │
+                    │   (Storage)   │
+                    └──────┬───────┘
+                           │
+                    ┌──────▼───────┐
+                    │  Apps Script  │
+                    │   (Alerting)  │
+                    └──────────────┘
+```
+
+## 🔧 Configuration
+
+### Environment Variables (.env)
+```bash
+# Airthings API
 AIRTHINGS_CLIENT_ID=your_client_id
 AIRTHINGS_CLIENT_SECRET=your_secret
-AIRTHINGS_DEVICE_SERIAL=your_serial
-EOF
+AIRTHINGS_DEVICE_SERIAL=your_device_serial
+
+# AirGradient Sensors (optional)
+AIRGRADIENT_SERIAL=outdoor_sensor_serial
+AIRGRADIENT_INDOOR_SERIAL=indoor_sensor_serial
+
+# Google Sheets
+GOOGLE_SPREADSHEET_ID=your_spreadsheet_id
+GOOGLE_SHEET_TAB=Cleaned_Data_20250831
 ```
 
-## Project Timeline
+### Google Service Account
+1. Create service account in Google Cloud Console
+2. Download credentials as `google-credentials.json`
+3. Share your Google Sheet with the service account email
 
-- **February 2025**: HVAC installation completed
-- **March 2025**: ERV installation completed
-- **May 17, 2025**: Filter upgrade to MERV 13 (both HVAC and ERV)
-- **Current**: 70+ days of excellent performance, monitoring for data-driven replacement
+## 📈 Data Collection
 
-## Running on Unifi Gateway
+The system collects data every 5 minutes, tracking:
 
-> **Having issues?** Check the [🔧 Troubleshooting Guide](TROUBLESHOOTING.md) for common problems and solutions.
+- **Indoor Metrics**: PM2.5, CO2, VOC, temperature, humidity, radon
+- **Outdoor Metrics**: PM2.5, CO2, VOC, NOX, temperature, humidity
+- **Calculated**: Real-time filter efficiency percentage
+- **Smart Alerts**: Confidence-based notifications avoiding false positives
 
-1. SSH into your Unifi Cloud Gateway Ultra:
-```bash
-ssh root@[your-gateway-ip]
-```
-
-2. Copy the setup script and run it:
-```bash
-scp collect_air_quality.py setup_unifi.sh root@[gateway-ip]:/data/scripts/
-ssh root@[gateway-ip]
-cd /data/scripts
-./setup_unifi.sh
-```
-
-3. The setup script will:
-   - Install Python dependencies
-   - Create .env template
-   - Set up data collection every 5 minutes
-   - Create log directories
-
-4. Edit your credentials:
-```bash
-vi /data/scripts/.env
-```
-
-5. Data will be collected every 5 minutes to capture:
-   - Cooking events (PM2.5 spikes)
-   - Shower humidity changes
-   - HVAC cycling patterns
-   - Cleaning activities
-   - Real-time filter efficiency
-
-## Google Sheets Setup
-
-1. Create a Google Form with these fields:
-   - Timestamp (Short answer)
-   - Indoor PM2.5 (Short answer)
-   - Outdoor PM2.5 (Short answer)
-   - Filter Efficiency (Short answer)
-   - Indoor CO2 (Short answer)
-   - Indoor VOC (Short answer)
-   - Days Since Install (Short answer)
-
-2. Get the form response URL and field IDs:
-   - Fill out the form once
-   - Right-click → Inspect on each field
-   - Find the `entry.XXXXXX` IDs
-   - Update `FORM_FIELD_MAPPING` in the script
-
-3. Link form to a Google Sheet for automatic data collection
-
-## Working with Jupyter Notebooks and Claude Code
-
-### What Claude Code Can Do
-- ✅ Read and edit notebook cells
-- ✅ Write analysis code for you
-- ✅ See cell outputs (text/numbers)
-- ❌ Cannot execute cells (you run them)
-- ❌ Cannot see Plotly visualizations (screenshot and share)
-
-### Workflow Example
-```bash
-# 1. Open notebook with Claude Code
-code analysis.ipynb
-
-# 2. Ask Claude to write analysis code
-"Load the Airthings CSV and calculate PM2.5 averages"
-
-# 3. You execute the cells manually
-# 4. For visualizations: Take screenshot → Share with Claude
-```
-
-### Tips
-- Claude Code can update multiple cells at once
-- Export Plotly charts as PNG for Claude to analyze
-- Use `fig.write_image()` to save charts Claude can read later
-
-## Key Metrics to Track
-
-### Filter Replacement Triggers
-- **Efficiency < 85%**: Start monitoring closely
-- **Efficiency < 80%**: Plan replacement within 2 weeks
-- **Indoor PM2.5 > 5 μg/m³ consistently**: Consider replacement
-- **Indoor PM2.5 > 12 μg/m³**: Replace immediately (WHO guideline)
-
-### Current Performance (July 2025)
-- **Filter age**: 70 days since MERV 13 installation (May 17)
-- **PM2.5 reduction**: 71% vs pre-MERV 13 period
-- **Indoor PM2.5**: 0.38 μg/m³ average post-MERV 13
-- **Cost projection**: $130/year (vs $260-$1040/year without data)
-
-### Health Correlation
-Track these events in your spreadsheet:
-- Asthma symptoms (wife/son)
-- Inhaler usage frequency
-- Sleep quality changes
-- Allergy flare-ups
-
-## Privacy Considerations
-
-The Jupyter notebook analysis can reveal sensitive information about your household:
-- Daily activity patterns (wake/sleep times)
-- Occupancy schedules (when you're home)
-- Cooking habits and meal times
-- Weekend vs weekday routines
-
-**For public sharing:** Use `analysis.ipynb` with general insights only.
-
-**For private analysis:** Create `local-analysis.ipynb` (gitignored) for detailed pattern analysis:
-```bash
-cp local-analysis-template.ipynb local-analysis.ipynb
-```
-
-This keeps your personal patterns private while sharing useful insights with the community.
-
-## Local Analysis (Your Computer)
+### Running the Collector
 
 ```bash
-# Activate environment
-source .venv/bin/activate
+# Test run
+python collect_with_sheets_api_v2.py
 
-# Open analysis notebook in VSCode for Claude integration
-code analysis.ipynb
+# Deploy to Unifi Gateway (see deployment guide)
+./scripts/deploy_to_unifi.sh
 ```
 
-### Available Analysis Notebooks
-- `analysis.ipynb` - Main analysis notebook with 6 months of historical data
-- `local-analysis-template.ipynb` - Template for private household pattern analysis
+## 🔔 Smart Alerting System
 
-📊 **[See Analysis Results](https://github.com/minghsuy/hvac-air-quality-analysis/wiki/Analysis-Results)** in the wiki for key findings and visualizations.
+The Google Apps Script provides intelligent notifications:
 
-## Project Structure
+- **High Confidence** alerts when outdoor PM2.5 > 10 μg/m³
+- **Medium Confidence** when outdoor PM2.5 is 5-10 μg/m³
+- **Activity suppression** during known high-activity hours
+- **Median-based** calculations to filter temporary spikes
 
+## 📚 Documentation
+
+- [Data Dictionary](DATA_DICTIONARY.md) - Field definitions and units
+- [Troubleshooting Guide](TROUBLESHOOTING.md) - Common issues and solutions
+- [Project Wiki](https://github.com/minghsuy/hvac-air-quality-analysis/wiki) - Detailed analysis and results
+
+## 🛠️ Development
+
+```bash
+# Run tests
+pytest
+
+# Format code
+uv run ruff format .
+
+# Lint
+uv run ruff check .
+
+# Type checking
+uv run mypy .
 ```
-hvac-air-quality/
-├── collect_air_quality.py   # Runs on Unifi Gateway
-├── analysis.ipynb           # Local analysis with Claude
-├── pyproject.toml          # UV package management
-├── .env                    # Your secrets (never commit!)
-├── README.md               # This file
-└── data/
-    ├── airthings_export.csv  # Your manual export
-    └── filter_events.csv     # Track replacements & symptoms
-```
 
+## 📊 Key Findings
 
-## Why Outdoor Monitoring Matters
+After 6 months of monitoring:
+- MERV 13 filters maintain >85% efficiency for 70+ days
+- Indoor PM2.5 stays below 12 μg/m³ (WHO guideline)
+- Filter replacement can be extended from 45 to 120+ days
+- Estimated savings: $130-910/year on filter costs
 
-Without outdoor PM2.5 data, you can't calculate true filter efficiency:
-- **Filter Efficiency = (Outdoor - Indoor) / Outdoor × 100%**
-- **Airthings limitation**: Only whole numbers (0, 1, 2, 3...) for PM2.5
-- Indoor "0" → 100% efficiency (meaningless!)
-- Indoor "1" vs "0" → Efficiency swings from 70% to 100%
-- **Solution**: AirGradient provides 0.01 μg/m³ precision
+## 🤝 Contributing
 
-## Current Status (July 2025)
+Contributions welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Run tests and linting
+4. Submit a pull request
 
-### What's Working
-1. ✅ Unifi Gateway collecting data every 5 minutes
-2. ✅ 6 months of Airthings data analyzed
-3. ✅ AirGradient outdoor sensor installed (July 26)
-4. ✅ Logging to Google Sheets for tracking
+## 📄 License
 
-### Recent Discovery
-July 26 data revealed efficiency calculations are **meaningless** at low PM2.5:
-- Efficiency swings from 8.8% to 100% in minutes
-- Same filter, different readings due to rounding
-- Need 30+ days of outdoor data to establish patterns
+MIT License - See [LICENSE](LICENSE) for details
 
-### Next Steps
-- Collect outdoor baseline for your area
-- Develop thresholds based on absolute values
-- Build alerts (not percentages!) for replacement
+## 🙏 Acknowledgments
 
-Remember: **With Airthings' whole number precision, percentage-based efficiency is useless!**
+- [Airthings](https://www.airthings.com/) for excellent indoor air quality sensors
+- [AirGradient](https://www.airgradient.com/) for open-source outdoor monitoring
+- Unifi Gateway Ultra for reliable edge computing platform
 
-## Documentation
+---
 
-### 📚 [GitHub Wiki](https://github.com/minghsuy/hvac-air-quality-analysis/wiki)
-- [Hardware Setup](https://github.com/minghsuy/hvac-air-quality-analysis/wiki/Hardware-Setup) - Airthings + AirGradient configuration
-- [Data Collection](https://github.com/minghsuy/hvac-air-quality-analysis/wiki/Data-Collection) - Automated monitoring setup
-- [Analysis Results](https://github.com/minghsuy/hvac-air-quality-analysis/wiki/Analysis-Results) - Key findings from 6 months of data
-- [Analysis Techniques](https://github.com/minghsuy/hvac-air-quality-analysis/wiki/Analysis-Techniques) - Data science methods used
-
-### 🛠️ Setup Guides
-- 🔧 [Troubleshooting Guide](TROUBLESHOOTING.md) - Common issues and solutions
-- 🚀 [Quick Start Guide](START_HERE.md) - 30-minute setup
-- 🔐 [SSH Setup Guide](ssh_into_uni_fi_cloud_gateway_ultra.md) - Unifi Gateway access
-- 📊 [Google Sheets Setup](docs/google-form-setup.md) - Form-based data logging
+**Note**: This system is designed for personal health monitoring. Always consult HVAC professionals for system maintenance and medical professionals for health concerns.
