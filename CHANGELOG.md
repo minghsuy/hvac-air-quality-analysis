@@ -7,13 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-09-01
+
 ### Added
 - Comprehensive data dictionary (DATA_DICTIONARY.md) defining all fields and units
 - Google Sheets schema migration tools for converting 14-column to 18-column format
 - Migration guide (SHEETS_MIGRATION_GUIDE.md) with step-by-step instructions
 - Data validation script to ensure compliance with data dictionary
-- Updated Google Apps Script for new 18-column schema with alerts
-- Test suite for Airthings API and Google Sheets integration
+- Smart alerting system in Google Apps Script with confidence levels
+- Activity spike filtering using median calculations
+- Outdoor PM2.5-based reliability scoring for alerts
+- Persistence scripts for Unifi Gateway reboots/updates
+- Dynamic IP discovery for AirGradient sensors using arp
 
 ### Changed
 - Migrated 3,985 rows from old Google Forms schema to new Sheets API schema
@@ -21,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Switched to using compensated values from AirGradient (pm02Compensated, atmpCompensated)
 - Standardized data types: numeric values with empty strings for missing data
 - Store radon in native API units (Bq/m³) instead of display units (pCi/L)
+- Apps Script now uses median instead of average to reduce false positives
+- Improved alerting logic with activity hour suppression
 
 ### Fixed
 - Airthings API response parsing for new "results" structure (was "sensors")
@@ -28,11 +35,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter efficiency calculation using compensated PM2.5 values
 - Data type consistency issues between string and numeric values
 - Unit conversion confusion for radon measurements
+- Cron job configuration on Unifi Gateway with proper PATH variables
+- mDNS resolution issues on Unifi using IP-based discovery
 
 ### Security
-- Removed hardcoded MAC addresses and serial numbers from test files
-- Fixed all bare except statements to specify exception types
-- Added proper environment variable usage for sensor identifiers
+- Removed hardcoded spreadsheet IDs from multiple files
+- Fixed exposed IP addresses in apps_script_code.gs
+- Updated form ID placeholders in sensors.template.json
+- Added missing sys import to fix undefined name errors
+- Removed all temporary test and migration scripts
+- Applied ruff formatting to ensure code quality
 
 ## [0.3.0] - 2025-08-30
 
@@ -111,7 +123,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health correlation tracking capabilities
 - 5-minute automated data collection via cron
 
-[Unreleased]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/minghsuy/hvac-air-quality-analysis/releases/tag/v0.1.0
