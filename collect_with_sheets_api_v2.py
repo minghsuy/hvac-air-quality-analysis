@@ -81,7 +81,7 @@ def ensure_headers(service, spreadsheet_id):
             range_name = f"{SHEET_TAB_NAME}!A1:R1"
         else:
             range_name = "A1:R1"
-            
+
         result = sheet.values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
 
         values = result.get("values", [])
@@ -112,10 +112,7 @@ def ensure_headers(service, spreadsheet_id):
         if not values or values[0] != headers:
             body = {"values": [headers]}
             sheet.values().update(
-                spreadsheetId=spreadsheet_id, 
-                range=range_name, 
-                valueInputOption="RAW", 
-                body=body
+                spreadsheetId=spreadsheet_id, range=range_name, valueInputOption="RAW", body=body
             ).execute()
             location = SHEET_TAB_NAME if SHEET_TAB_NAME else "main sheet"
             print(f"✓ Headers updated in {location}")
@@ -140,7 +137,7 @@ def append_to_sheet(service, spreadsheet_id, values):
     """Append a row to the spreadsheet"""
     try:
         body = {"values": [values]}
-        
+
         # Build range based on whether we're using a specific tab
         if SHEET_TAB_NAME:
             range_name = f"{SHEET_TAB_NAME}!A:R"
@@ -213,7 +210,7 @@ def get_airthings_data():
 
         # Use last 6 chars of serial for sensor ID
         serial_suffix = AIRTHINGS_DEVICE_SERIAL[-6:] if AIRTHINGS_DEVICE_SERIAL else "unknown"
-        
+
         # Check both old and new API response formats
         if sensors.get("results"):
             # New format (as of Aug 2025)
@@ -221,7 +218,7 @@ def get_airthings_data():
             sensor_data = {}
             for s in result.get("sensors", []):
                 sensor_data[s["sensorType"]] = s["value"]
-            
+
             return {
                 "sensor_id": f"airthings_{serial_suffix}",
                 "room": "master_bedroom",
@@ -263,7 +260,7 @@ def get_airgradient_data(serial, room, ip=None):
             urls.append(f"http://airgradient_{serial}.local/measures/current")
         if ip and ip != "192.168.X.XX":
             urls.append(f"http://{ip}/measures/current")
-        
+
         if not urls:
             print(f"  ⚠️ No valid URL for {room} sensor")
             return None
@@ -274,27 +271,37 @@ def get_airgradient_data(serial, room, ip=None):
                 if response.status_code == 200:
                     data = response.json()
                     # Extract last 6 chars of serial for sensor ID
-                    sensor_id = f"airgradient_{serial[-6:]}" if serial and serial != "XXXXXX" else f"airgradient_{room[:3]}"
-                    
+                    sensor_id = (
+                        f"airgradient_{serial[-6:]}"
+                        if serial and serial != "XXXXXX"
+                        else f"airgradient_{room[:3]}"
+                    )
+
                     return {
                         "sensor_id": sensor_id,
                         "room": room,
                         "sensor_type": "airgradient",
-                        "pm25": data.get("pm02Compensated", data.get("pm02", 0)),  # Use compensated value if available
+                        "pm25": data.get(
+                            "pm02Compensated", data.get("pm02", 0)
+                        ),  # Use compensated value if available
                         "co2": data.get("rco2", 0),
                         "voc": data.get("tvocIndex", 0),  # Fixed: camelCase field name
-                        "nox": data.get("noxIndex", 0),    # Fixed: camelCase field name
-                        "temp": data.get("atmpCompensated", data.get("atmp", 0)),  # Use compensated temp too
-                        "humidity": data.get("rhumCompensated", data.get("rhum", 0)),  # And humidity
+                        "nox": data.get("noxIndex", 0),  # Fixed: camelCase field name
+                        "temp": data.get(
+                            "atmpCompensated", data.get("atmp", 0)
+                        ),  # Use compensated temp too
+                        "humidity": data.get(
+                            "rhumCompensated", data.get("rhum", 0)
+                        ),  # And humidity
                         "radon": "",  # Empty string for missing data
                         "raw_data": data,
                     }
             except (requests.RequestException, KeyError, ValueError):
                 continue
-        
+
         print(f"  ⚠️ Could not reach {room} sensor")
         return None
-        
+
     except Exception as e:
         print(f"AirGradient {room} connection error: {e}")
         return None
@@ -310,35 +317,39 @@ def calculate_efficiency(indoor_pm25, outdoor_pm25):
 
 def test_local():
     """Test the collection locally before deploying"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🧪 TESTING GOOGLE SHEETS DATA COLLECTION")
-    print("="*60)
-    
+    print("=" * 60)
+
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"\n📅 Timestamp: {timestamp}")
-    
+
     # Show configuration
     print("\n⚙️ Configuration:")
-    print(f"  Spreadsheet ID: {SPREADSHEET_ID[:10]}..." if SPREADSHEET_ID else "  Spreadsheet ID: NOT SET")
+    print(
+        f"  Spreadsheet ID: {SPREADSHEET_ID[:10]}..."
+        if SPREADSHEET_ID
+        else "  Spreadsheet ID: NOT SET"
+    )
     if SHEET_TAB_NAME:
         print(f"  Sheet Tab: {SHEET_TAB_NAME}")
     else:
         print("  Sheet Tab: Using main sheet")
-    
+
     # Connect to Google Sheets
     print("\n🔌 Connecting to Google Sheets...")
     service = get_sheets_service()
     if not service:
         print("❌ Failed to connect to Google Sheets API")
         return False
-    
+
     # Check headers
     location = f"'{SHEET_TAB_NAME}'" if SHEET_TAB_NAME else "main sheet"
     print(f"\n📋 Checking headers in {location}...")
     if not ensure_headers(service, SPREADSHEET_ID):
         print("❌ Could not verify headers")
         return False
-    
+
     # Collect outdoor data
     print("\n🌡️ Collecting outdoor data...")
     outdoor = get_airgradient_data(AIRGRADIENT_OUTDOOR_SERIAL, "outdoor", OUTDOOR_IP)
@@ -347,17 +358,22 @@ def test_local():
         # Use dummy data for testing
         print("  Using dummy outdoor data for testing...")
         outdoor = {
-            "pm25": 10, "co2": 420, "voc": 100, "nox": 1,
-            "temp": 25, "humidity": 50, "radon": 0
+            "pm25": 10,
+            "co2": 420,
+            "voc": 100,
+            "nox": 1,
+            "temp": 25,
+            "humidity": 50,
+            "radon": 0,
         }
     else:
         print(f"  ✓ Outdoor PM2.5: {outdoor['pm25']} μg/m³")
-    
+
     outdoor_pm25 = outdoor["pm25"]
-    
+
     # Test data rows
     test_rows = []
-    
+
     # Collect master bedroom (Airthings)
     print("\n🛏️ Collecting master bedroom data...")
     master = get_airthings_data()
@@ -365,7 +381,7 @@ def test_local():
         efficiency = calculate_efficiency(master["pm25"], outdoor_pm25)
         print(f"  ✓ Master PM2.5: {master['pm25']} μg/m³")
         print(f"  ✓ Filter Efficiency: {efficiency}%")
-        
+
         row = [
             timestamp,
             master["sensor_id"],
@@ -389,7 +405,7 @@ def test_local():
         test_rows.append(row)
     else:
         print("  ⚠️ No Airthings data available")
-    
+
     # Collect second bedroom (AirGradient)
     if AIRGRADIENT_INDOOR_SERIAL:
         print("\n🛏️ Collecting second bedroom data...")
@@ -398,7 +414,7 @@ def test_local():
             efficiency = calculate_efficiency(second["pm25"], outdoor_pm25)
             print(f"  ✓ Second bedroom PM2.5: {second['pm25']} μg/m³")
             print(f"  ✓ Filter Efficiency: {efficiency}%")
-            
+
             row = [
                 timestamp,
                 second["sensor_id"],
@@ -422,7 +438,7 @@ def test_local():
             test_rows.append(row)
         else:
             print("  ⚠️ No second bedroom data available")
-    
+
     # Send test data to Google Sheets
     if test_rows:
         print(f"\n📤 Sending {len(test_rows)} row(s) to Google Sheets...")
@@ -430,7 +446,7 @@ def test_local():
         for row in test_rows:
             if append_to_sheet(service, SPREADSHEET_ID, row):
                 success_count += 1
-        
+
         if success_count > 0:
             print(f"\n✅ Successfully sent {success_count}/{len(test_rows)} rows to {location}")
             print("   Check your Google Sheet to verify the data!")
@@ -446,34 +462,34 @@ def test_local():
 def main():
     """Main collection function for production use"""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
+
     # Connect to Google Sheets
     service = get_sheets_service()
     if not service:
         print("❌ Failed to connect to Google Sheets API")
         return
-    
+
     # Ensure headers are set
     ensure_headers(service, SPREADSHEET_ID)
-    
+
     # Collect outdoor data first
     outdoor = get_airgradient_data(AIRGRADIENT_OUTDOOR_SERIAL, "outdoor", OUTDOOR_IP)
     if not outdoor:
         print("❌ Failed to get outdoor data")
         return
-    
+
     outdoor_pm25 = outdoor["pm25"]
     print(f"✓ Outdoor: PM2.5={outdoor_pm25} μg/m³")
-    
+
     # Collect indoor data from all sensors
     rows_to_append = []
-    
+
     # Master bedroom (Airthings)
     master = get_airthings_data()
     if master:
         efficiency = calculate_efficiency(master["pm25"], outdoor_pm25)
         print(f"✓ Master bedroom: PM2.5={master['pm25']} μg/m³, Efficiency={efficiency}%")
-        
+
         row = [
             timestamp,
             master["sensor_id"],
@@ -495,14 +511,14 @@ def main():
             outdoor["nox"],
         ]
         rows_to_append.append(row)
-    
+
     # Second bedroom (AirGradient)
     if AIRGRADIENT_INDOOR_SERIAL:
         second = get_airgradient_data(AIRGRADIENT_INDOOR_SERIAL, "second_bedroom", INDOOR_IP)
         if second:
             efficiency = calculate_efficiency(second["pm25"], outdoor_pm25)
             print(f"✓ Second bedroom: PM2.5={second['pm25']} μg/m³, Efficiency={efficiency}%")
-            
+
             row = [
                 timestamp,
                 second["sensor_id"],
@@ -524,13 +540,13 @@ def main():
                 outdoor["nox"],
             ]
             rows_to_append.append(row)
-    
+
     # Send all rows to Google Sheets
     success_count = 0
     for row in rows_to_append:
         if append_to_sheet(service, SPREADSHEET_ID, row):
             success_count += 1
-    
+
     if success_count > 0:
         location = SHEET_TAB_NAME if SHEET_TAB_NAME else "main sheet"
         print(f"\n✅ Successfully sent {success_count}/{len(rows_to_append)} rows to {location}")
@@ -540,7 +556,7 @@ def main():
 
 if __name__ == "__main__":
     import sys
-    
+
     # Add instructions
     if len(sys.argv) == 1:
         print("\nUsage:")
@@ -550,7 +566,7 @@ if __name__ == "__main__":
         print("  GOOGLE_SPREADSHEET_ID=your_sheet_id")
         print("  GOOGLE_SHEET_TAB=Cleaned_Data_20250831  # Optional, for specific tab")
         print("")
-    
+
     if len(sys.argv) > 1 and sys.argv[1] == "--test":
         print("Running in TEST mode...")
         test_local()

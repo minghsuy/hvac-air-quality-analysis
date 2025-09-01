@@ -26,9 +26,7 @@ def load_env():
 load_env()
 
 # Configuration
-SPREADSHEET_ID = os.environ.get(
-    "GOOGLE_SPREADSHEET_ID", "1RMhS2pra8Fho3mw0RMc39IMT-seBeTN_tmo9yFIwBBo"
-)
+SPREADSHEET_ID = os.environ.get("GOOGLE_SPREADSHEET_ID")
 
 # Sensors
 AIRTHINGS_CLIENT_ID = os.environ.get("AIRTHINGS_CLIENT_ID")

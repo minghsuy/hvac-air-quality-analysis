@@ -28,9 +28,7 @@ def load_env():
 load_env()
 
 # Configuration
-SPREADSHEET_ID = os.environ.get(
-    "GOOGLE_SPREADSHEET_ID", "1RMhS2pra8Fho3mw0RMc39IMT-seBeTN_tmo9yFIwBBo"
-)
+SPREADSHEET_ID = os.environ.get("GOOGLE_SPREADSHEET_ID")
 CREDENTIALS_FILE = (
     "/data/scripts/google-credentials.json"
     if os.path.exists("/data/scripts/google-credentials.json")

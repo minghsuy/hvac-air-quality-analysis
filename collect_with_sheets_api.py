@@ -5,6 +5,7 @@ This version works on Ubiquiti Gateway and handles multiple sensors properly
 """
 
 import os
+import sys
 import json
 import requests
 from datetime import datetime
@@ -30,9 +31,10 @@ def load_env():
 load_env()
 
 # Configuration
-SPREADSHEET_ID = os.environ.get(
-    "GOOGLE_SPREADSHEET_ID", "1RMhS2pra8Fho3mw0RMc39IMT-seBeTN_tmo9yFIwBBo"
-)
+SPREADSHEET_ID = os.environ.get("GOOGLE_SPREADSHEET_ID")
+if not SPREADSHEET_ID:
+    print("❌ Error: GOOGLE_SPREADSHEET_ID not set in environment")
+    sys.exit(1)
 
 # Try local credentials first, then Ubiquiti path
 if os.path.exists("google-credentials.json"):
