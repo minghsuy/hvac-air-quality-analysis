@@ -2,16 +2,35 @@
 
 ## Data Collection Flow
 
+### Current Architecture (Dual System)
+
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Airthings API  │────▶│  Unifi Gateway  │────▶│  Google Sheets  │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                               ▲
-┌─────────────────┐            │
-│ AirGradient     │────────────┘
-│ (Local mDNS)    │
-└─────────────────┘
+                    ┌─────────────────┐
+                    │  Airthings API  │
+                    └────────┬────────┘
+                             │
+        ┌────────────────────┴────────────────────┐
+        │                                         │
+        ▼                                         ▼
+┌───────────────┐                         ┌───────────────┐
+│ Unifi Gateway │                         │  Spark DGX    │
+│ (Legacy/Cron) │                         │ (Primary)     │
+└───────┬───────┘                         └───────┬───────┘
+        │                                         │
+        │  ┌─────────────────┐                   │
+        └─▶│ AirGradient     │◀──────────────────┘
+           │ (Local Network) │
+           └────────┬────────┘
+                    │
+                    ▼
+            ┌───────────────┐
+            │ Google Sheets │
+            └───────────────┘
 ```
+
+**Both systems collect independently:**
+- **Unifi Gateway**: Cron-based (original deployment)
+- **Spark DGX**: Systemd-based (testing alternative deployment)
 
 ## Components
 
@@ -34,21 +53,42 @@
 
 ### Data Collection Scripts
 
-- **`collect_with_sheets_api.py`**: Main multi-sensor collector using Sheets API
+- **`collect_with_sheets_api_v2.py`**: Primary collector (v2.1 schema, multi-room)
+- **`collect_with_sheets_api.py`**: Legacy single-room collector
 - **`collect_multi_fixed.py`**: Wrapper for Unifi (hardcoded IPs)
 - **`collect_air_quality.py`**: Legacy single-sensor with Forms API
 
-### Unifi Gateway Deployment
+### Deployment Options
+
+#### Option A: Unifi Cloud Gateway (Legacy)
 
 ```bash
 # Cron job (runs every 5 minutes)
-*/5 * * * * /usr/bin/python3 /data/scripts/collect_multi_fixed.py >> /data/logs/air_quality.log 2>&1
+*/5 * * * * /data/scripts/run_collector.sh >> /data/logs/air_quality.log 2>&1
 ```
 
 **Limitations:**
 - No mDNS resolution (.local doesn't work)
-- Firmware updates wipe customizations
+- Firmware updates wipe cron jobs
 - Limited Python packages available
+- No GPU for advanced analytics
+
+#### Option B: Spark DGX / Linux Workstation (Alternative)
+
+```bash
+# Systemd timer (user-level, persistent)
+systemctl --user enable air-quality-collector.timer
+systemctl --user start air-quality-collector.timer
+```
+
+**Differences:**
+- Systemd timers (persistent across updates)
+- Full Python ecosystem via uv
+- Potential for GPU acceleration
+- Potential for local LLM integration
+- Docker support available
+
+**Note:** Currently running in parallel with Unifi Gateway for validation.
 
 ### Google Sheets Structure
 
