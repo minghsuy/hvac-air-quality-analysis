@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Air Quality Collector Every 5 Minutes
+Requires=air-quality-collector.service
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+Unit=air-quality-collector.service
+
+[Install]
+WantedBy=timers.target

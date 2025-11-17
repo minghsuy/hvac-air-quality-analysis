@@ -1,0 +1,15 @@
+[Unit]
+Description=HVAC Air Quality Data Collector
+After=network.target
+
+[Service]
+Type=oneshot
+User=miyang
+WorkingDirectory=/home/miyang/hvac-air-quality-analysis
+Environment="PATH=/home/miyang/hvac-air-quality-analysis/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/miyang/hvac-air-quality-analysis/.venv/bin/python /home/miyang/hvac-air-quality-analysis/collect_with_sheets_api_v2.py
+StandardOutput=append:/home/miyang/hvac-air-quality-analysis/logs/air_quality.log
+StandardError=append:/home/miyang/hvac-air-quality-analysis/logs/air_quality.log
+
+[Install]
+WantedBy=multi-user.target
