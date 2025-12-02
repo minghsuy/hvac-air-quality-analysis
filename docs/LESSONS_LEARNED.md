@@ -37,9 +37,9 @@ fig.add_trace(go.Scatter(x=x_dates, y=df['value']))
 
 **Problem**: Data collection stopped unexpectedly.
 
-**Discovery**: Unifi firmware update removed cron job.
+**Discovery**: Firmware update removed cron job configuration.
 
-**Solution**: Re-add cron job and document in setup scripts.
+**Solution**: Migrated to systemd user services with linger for true persistence.
 
 ## Aug 29, 2025: Filter Efficiency Confusion
 
@@ -51,11 +51,11 @@ fig.add_trace(go.Scatter(x=x_dates, y=df['value']))
 
 ## Aug 30, 2025: Multi-Sensor Deployment
 
-**Problem**: .local domains don't resolve on Unifi Gateway.
+**Problem**: .local domains don't resolve on some network configurations.
 
-**Discovery**: Unifi lacks mDNS support.
+**Discovery**: mDNS support varies by network setup.
 
-**Solution**: Created wrapper script with hardcoded IPs.
+**Solution**: Created IP discovery script to update sensors.json with current IPs.
 
 ## Aug 30, 2025: Release Process Failure
 

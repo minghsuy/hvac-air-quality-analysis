@@ -78,9 +78,9 @@ Design a summary sheet with:
 - `analyze_historical.py` - For deeper analysis
 - Your Google Sheet URL
 
-### On Ubiquiti (already running):
-- `collect_multi_fixed.py` - Running every 5 minutes
-- Logs at `/data/logs/air_quality.log`
+### On Server (already running):
+- `collect_with_sheets_api_v2.py` - Running every 5 minutes via systemd timer
+- Logs via `journalctl --user -u air-quality-collector.service`
 
 ## Success Metrics for Tomorrow
 

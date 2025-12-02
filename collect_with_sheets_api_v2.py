@@ -2,7 +2,6 @@
 """
 Multi-sensor collector using Google Sheets API - Version 2
 Updated to write to a specific sheet tab (for cleaned data)
-Test locally before deploying to Unifi Gateway
 """
 
 import os

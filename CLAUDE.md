@@ -46,12 +46,9 @@ pip freeze > requirements.txt  # NO!
 python -m pip install    # NO!
 ```
 
-**Exception:** Unifi Gateway uses pip3 (no uv available there)
-
 ## ⚠️ This is NOT a Python Package!
 
-- **Flat structure required** for Unifi Gateway compatibility
-- Scripts stay in root directory, NOT src/
+- **Flat structure required** - scripts stay in root directory, NOT src/
 - GitHub releases create ZIP/TAR archives, NOT wheels
 - `pyproject.toml` has `package = false` 
 
@@ -125,9 +122,6 @@ uv run mypy .                   # Type checking (if configured)
 # Test locally with v2 (multi-room support)
 python collect_with_sheets_api_v2.py
 
-# Deploy to Unifi
-./scripts/deploy_to_unifi.sh
-
 # Update sensor IPs
 python scripts/update_airgradient_ips.py
 ```
@@ -138,10 +132,33 @@ python scripts/update_airgradient_ips.py
 |-------|----------|
 | "Module not found" | Run `uv sync --dev` |
 | ".local doesn't resolve" | Run `scripts/update_airgradient_ips.py` |
-| "No pip3 on Unifi" | `apt update && apt install python3-pip` |
 | Release workflow fails | Check you ran tests/linting first |
 | Sheet not updating | Check GOOGLE_SHEET_TAB in .env |
-| Cron not running | Run `/data/scripts/SETUP_AFTER_FIRMWARE_UPDATE.sh` |
+| Data collection stops after reboot/logout | Enable linger: `loginctl enable-linger $USER` |
+
+## 🔄 Systemd User Services & Linger
+
+When running the collector as a **user service** (`systemctl --user`), you must enable **linger** to keep services running after logout:
+
+```bash
+# Check if linger is enabled
+loginctl show-user $USER | grep Linger
+
+# Enable linger (required for services to survive logout/reboot)
+loginctl enable-linger $USER
+
+# Verify timer is running
+systemctl --user status air-quality-collector.timer
+```
+
+**Why this matters:**
+- Without linger: Services stop when you log out
+- With linger: Services start at boot and run 24/7
+
+**After system updates/reboots**, verify the timer is running:
+```bash
+journalctl --user -u air-quality-collector.timer --since "1 hour ago"
+```
 
 ## 📊 Data Schema (v0.4.0)
 
@@ -194,7 +211,7 @@ When updating `apps_script_code.gs`:
 ## Remember
 
 1. **Always run tests/linting before release**
-2. **Use uv, never pip (except Unifi)**  
+2. **Use uv, never pip**
 3. **Wiki is separate - never embed it**
 4. **Check for exposed secrets before pushing**
 5. **This isn't a Python package - use flat structure**

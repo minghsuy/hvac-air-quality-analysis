@@ -25,7 +25,7 @@ dependencies = [
 ]
 
 [project.scripts]
-# Scripts remain in root for Unifi Gateway compatibility
+# Scripts remain in root for flat project structure
 # Uncomment when files are moved to package structure
 # hvac-collect = "hvac_air_quality.collect:main"
 # hvac-analyze = "hvac_air_quality.analyze:main"
@@ -39,7 +39,9 @@ Changelog = "https://github.com/minghsuy/hvac-air-quality-analysis/blob/main/CHA
 
 [tool.uv]
 package = false  # This is not a packaged project
-dev-dependencies = [
+
+[dependency-groups]
+dev = [
     "pytest>=8.3.3",
     "black>=24.10.0",
     "ruff>=0.7.4",

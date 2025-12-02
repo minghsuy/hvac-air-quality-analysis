@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Multi-sensor collector using Google Sheets API instead of Forms
-This version works on Ubiquiti Gateway and handles multiple sensors properly
+Handles multiple sensors properly with fallback path handling
 """
 
 import os
@@ -13,10 +13,10 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 
-# Simple env loading for Ubiquiti
+# Simple env loading with fallback paths
 def load_env():
     """Load environment variables from .env file"""
-    # Try local .env first, then Ubiquiti path
+    # Try local .env first, then fallback paths
     env_paths = [".env", "/data/scripts/.env"]
     for env_path in env_paths:
         if os.path.exists(env_path):
@@ -36,7 +36,7 @@ if not SPREADSHEET_ID:
     print("❌ Error: GOOGLE_SPREADSHEET_ID not set in environment")
     sys.exit(1)
 
-# Try local credentials first, then Ubiquiti path
+# Try local credentials first, then fallback path
 if os.path.exists("google-credentials.json"):
     CREDENTIALS_FILE = "google-credentials.json"
 else:

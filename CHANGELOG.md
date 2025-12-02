@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-12-01
+
+### Changed
+- **BREAKING**: Migrated from Unifi Gateway to Spark DGX for data collection
+- Replaced cron-based collection with systemd user services and timers
+- Updated documentation to reflect new deployment architecture
+
+### Removed
+- Unifi Gateway deployment scripts (`setup_unifi.sh`, `deploy_to_unifi.sh`)
+- Unifi-specific SSH setup guide (`ssh_into_uni_fi_cloud_gateway_ultra.md`)
+- Unifi firmware persistence scripts (`SETUP_AFTER_FIRMWARE_UPDATE.sh`)
+- Cron job configuration (replaced with systemd timers)
+
+### Why This Change?
+The Unifi Gateway served us well initially, but proved unreliable for long-term data collection:
+
+1. **Firmware updates wiped configurations** - Every Unifi firmware update removed our cron jobs and custom scripts, requiring manual re-setup
+2. **Limited persistence** - Data collection would stop unexpectedly after reboots or updates with no notification
+3. **Dependency challenges** - Installing Python packages on Unifi required workarounds
+
+Spark DGX with systemd user services + linger provides:
+- **True persistence** - Services survive logout and reboot automatically
+- **Better monitoring** - `journalctl` for logs, `systemctl` for status
+- **No firmware surprises** - Standard Linux service management
+- **Simpler maintenance** - Use `uv` for dependencies like any other Python project
+
 ## [0.4.0] - 2025-09-01
 
 ### Added
@@ -17,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Smart alerting system in Google Apps Script with confidence levels
 - Activity spike filtering using median calculations
 - Outdoor PM2.5-based reliability scoring for alerts
-- Persistence scripts for Unifi Gateway reboots/updates
+- Persistence scripts for system reboots/updates
 - Dynamic IP discovery for AirGradient sensors using arp
 
 ### Changed
@@ -35,8 +61,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filter efficiency calculation using compensated PM2.5 values
 - Data type consistency issues between string and numeric values
 - Unit conversion confusion for radon measurements
-- Cron job configuration on Unifi Gateway with proper PATH variables
-- mDNS resolution issues on Unifi using IP-based discovery
+- Cron job configuration with proper PATH variables
+- mDNS resolution issues using IP-based discovery
 
 ### Security
 - Removed hardcoded spreadsheet IDs from multiple files
@@ -52,8 +78,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multi-sensor support for tracking multiple rooms independently
 - Google Sheets API direct writing (replacing Forms for better scalability)
 - Second bedroom monitoring with AirGradient indoor sensor
-- Dynamic IP resolution for AirGradient sensors on Ubiquiti
-- Wrapper script for .local domain issues on Ubiquiti Gateway
+- Dynamic IP resolution for AirGradient sensors
+- Wrapper script for .local domain issues
 - Comprehensive data analysis scripts for filter change impact
 - Google Apps Script for automated monitoring and alerts
 - Room-specific efficiency calculations
@@ -67,16 +93,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced documentation with multi-sensor setup instructions
 
 ### Fixed
-- Data collection outage caused by Ubiquiti firmware update removing cron job
-- Ubiquiti Gateway mDNS resolution issues with .local domains
+- Data collection outage caused by firmware update removing cron job
+- mDNS resolution issues with .local domains
 - Timestamp handling for proper timezone support
 - Filter efficiency calculation accuracy at low PM2.5 levels
 
 ### Discovered
-- Ubiquiti firmware updates can wipe custom cron jobs and scripts
+- Firmware updates can wipe custom cron jobs and scripts
 - Need monitoring to detect when collection stops (implemented in Apps Script)
 - Low outdoor PM2.5 (<5 μg/m³) makes efficiency percentage unreliable
-- Ubiquiti Gateway requires special handling for Python dependencies
 
 ## [0.2.0] - 2025-07-27
 
@@ -93,7 +118,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Updated pyproject.toml with Google API dependencies
 - Reorganized project structure with tests/ and scripts/ directories
-- Configured project as non-packaged for Unifi Gateway compatibility
+- Configured project as non-packaged for edge device compatibility
 
 ### Fixed
 - Linting and formatting issues across all Python files
@@ -111,7 +136,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AirGradient local API integration for outdoor air quality data
 - Filter efficiency calculation and monitoring
 - Google Forms integration for data logging
-- Automated data collection script for Unifi Gateway
+- Automated data collection script
 - Historical data analysis tools
 - Jupyter notebook for interactive analysis
 - Wiki documentation for project setup and results
@@ -123,7 +148,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health correlation tracking capabilities
 - 5-minute automated data collection via cron
 
-[Unreleased]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.1.0...v0.2.0

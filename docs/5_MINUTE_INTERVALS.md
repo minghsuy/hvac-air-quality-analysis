@@ -25,16 +25,20 @@ Google Sheets can handle up to 10 million cells, so even with 13 columns, you ha
 
 ## Adjusting the Interval
 
-If you want to change the frequency later:
+If you want to change the frequency, modify the systemd timer:
 
 ```bash
-# On Unifi Gateway
-crontab -e
+# Edit the timer configuration
+systemctl --user edit air-quality-collector.timer
 
-# Change */5 to:
-# */10 for every 10 minutes (6/hour)
-# */15 for every 15 minutes (4/hour)
-# */3 for every 3 minutes (20/hour) - more detailed
+# Common intervals:
+# OnCalendar=*:0/5    # Every 5 minutes (default)
+# OnCalendar=*:0/10   # Every 10 minutes
+# OnCalendar=*:0/15   # Every 15 minutes
+# OnCalendar=*:0/3    # Every 3 minutes (more detailed)
+
+# Reload after changes
+systemctl --user daemon-reload
 ```
 
 ## Monitoring Specific Events

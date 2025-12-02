@@ -57,23 +57,18 @@
 │   ├── LESSONS_LEARNED.md       # Key insights from deployment
 │   ├── 5_MINUTE_INTERVALS.md    # Why we use 5-minute collection
 │   └── indoor_airqualitys_hidden_impact_on_family_health.md
-├── ssh_into_uni_fi_cloud_gateway_ultra.md  # SSH setup for Unifi
 ├── RELEASE_CHECKLIST.md         # Release process documentation
 ├── VISUALIZATION_WORKFLOW.md    # Chart generation best practices
 ├── NEXT_PHASE.md               # Future enhancements
 └── wiki_structure.md           # Wiki organization guide
 ```
 
-## Deployment Scripts
+## Utility Scripts
 
-### Unifi Gateway
 ```
 └── scripts/
-    ├── deploy_to_unifi.sh        # Deployment automation
-    ├── run_collector.sh          # Wrapper for cron execution
     ├── update_airgradient_ips.py # Dynamic IP discovery
     ├── check_status.sh           # System health check
-    ├── SETUP_AFTER_FIRMWARE_UPDATE.sh  # Persistence after updates
     └── archive/                  # Old versions for reference
 ```
 
@@ -123,17 +118,11 @@
 # Test collection locally
 python collect_with_sheets_api_v2.py
 
-# Deploy to Unifi
-./scripts/deploy_to_unifi.sh
-
 # Update sensor IPs
 python scripts/update_airgradient_ips.py
 
 # Check system status
 ./scripts/check_status.sh
-
-# View recent data
-tail -5 /data/logs/air_quality_data.jsonl | jq .
 ```
 
 ## Storage Locations
@@ -149,6 +138,6 @@ tail -5 /data/logs/air_quality_data.jsonl | jq .
 
 1. **Never commit**: `.env`, `google-credentials.json`, `sensors.json` (with real IPs)
 2. **Always use**: uv for dependency management (not pip)
-3. **Test locally**: Before deploying to Unifi Gateway
+3. **Test locally**: Before deploying
 4. **Check logs**: When troubleshooting issues
 5. **Backup config**: Before making major changes

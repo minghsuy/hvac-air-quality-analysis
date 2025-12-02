@@ -60,8 +60,8 @@ cp .env.example .env
        └────────────────────┴─────────────────────┘
                            │
                     ┌──────▼───────┐
-                    │ Unifi Gateway │
-                    │   (Collector) │
+                    │   Collector   │
+                    │  (Spark DGX)  │
                     └──────┬───────┘
                            │
                     ┌──────▼───────┐
@@ -113,8 +113,8 @@ The system collects data every 5 minutes, tracking:
 # Test run
 python collect_with_sheets_api_v2.py
 
-# Deploy to Unifi Gateway (see deployment guide)
-./scripts/deploy_to_unifi.sh
+# For persistent collection, use systemd user service with linger enabled
+# See CLAUDE.md for systemd setup instructions
 ```
 
 ## 🔔 Smart Alerting System
@@ -172,7 +172,6 @@ MIT License - See [LICENSE](LICENSE) for details
 
 - [Airthings](https://www.airthings.com/) for excellent indoor air quality sensors
 - [AirGradient](https://www.airgradient.com/) for open-source outdoor monitoring
-- Unifi Gateway Ultra for reliable edge computing platform
 
 ---
 

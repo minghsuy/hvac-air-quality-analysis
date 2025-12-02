@@ -181,10 +181,10 @@ function checkDataCollection() {
     const body = `Data collection has stopped!\n\n` +
                  `Last data received: ${lastTime}\n` +
                  `Hours since last data: ${hoursSinceLastData.toFixed(1)}\n\n` +
-                 `Check the Unifi Gateway:\n` +
-                 `1. SSH to your gateway (192.168.X.X)\n` +
-                 `2. Run: /data/scripts/STATUS.sh\n` +
-                 `3. Run: /data/scripts/SETUP_AFTER_FIRMWARE_UPDATE.sh if needed`;
+                 `Check the collector:\n` +
+                 `1. SSH to your server\n` +
+                 `2. Run: systemctl --user status air-quality-collector.timer\n` +
+                 `3. Check logs: journalctl --user -u air-quality-collector.service`;
     
     MailApp.sendEmail(emailAddress, subject, body);
   }

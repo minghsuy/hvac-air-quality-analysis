@@ -2,35 +2,17 @@
 
 ## Data Collection Flow
 
-### Current Architecture (Dual System)
-
 ```
-                    ┌─────────────────┐
-                    │  Airthings API  │
-                    └────────┬────────┘
-                             │
-        ┌────────────────────┴────────────────────┐
-        │                                         │
-        ▼                                         ▼
-┌───────────────┐                         ┌───────────────┐
-│ Unifi Gateway │                         │  Spark DGX    │
-│ (Legacy/Cron) │                         │ (Primary)     │
-└───────┬───────┘                         └───────┬───────┘
-        │                                         │
-        │  ┌─────────────────┐                   │
-        └─▶│ AirGradient     │◀──────────────────┘
-           │ (Local Network) │
-           └────────┬────────┘
-                    │
-                    ▼
-            ┌───────────────┐
-            │ Google Sheets │
-            └───────────────┘
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Airthings API  │────▶│   Collector     │────▶│  Google Sheets  │
+└─────────────────┘     │  (Spark DGX)    │     └─────────────────┘
+                        └─────────────────┘
+                               ▲
+┌─────────────────┐            │
+│ AirGradient     │────────────┘
+│ (Local Network) │
+└─────────────────┘
 ```
-
-**Both systems collect independently:**
-- **Unifi Gateway**: Cron-based (original deployment)
-- **Spark DGX**: Systemd-based (testing alternative deployment)
 
 ## Components
 
@@ -53,42 +35,26 @@
 
 ### Data Collection Scripts
 
-- **`collect_with_sheets_api_v2.py`**: Primary collector (v2.1 schema, multi-room)
+- **`collect_with_sheets_api_v2.py`**: Main multi-sensor collector using Sheets API
 - **`collect_with_sheets_api.py`**: Legacy single-room collector
-- **`collect_multi_fixed.py`**: Wrapper for Unifi (hardcoded IPs)
 - **`collect_air_quality.py`**: Legacy single-sensor with Forms API
 
-### Deployment Options
+### Systemd Deployment
 
-#### Option A: Unifi Cloud Gateway (Legacy)
-
-```bash
-# Cron job (runs every 5 minutes)
-*/5 * * * * /data/scripts/run_collector.sh >> /data/logs/air_quality.log 2>&1
-```
-
-**Limitations:**
-- No mDNS resolution (.local doesn't work)
-- Firmware updates wipe cron jobs
-- Limited Python packages available
-- No GPU for advanced analytics
-
-#### Option B: Spark DGX / Linux Workstation (Alternative)
+The collector runs as a systemd user service with a timer:
 
 ```bash
-# Systemd timer (user-level, persistent)
-systemctl --user enable air-quality-collector.timer
-systemctl --user start air-quality-collector.timer
+# Check service status
+systemctl --user status air-quality-collector.timer
+systemctl --user status air-quality-collector.service
+
+# View logs
+journalctl --user -u air-quality-collector.service --since "1 hour ago"
 ```
 
-**Differences:**
-- Systemd timers (persistent across updates)
-- Full Python ecosystem via uv
-- Potential for GPU acceleration
-- Potential for local LLM integration
-- Docker support available
-
-**Note:** Currently running in parallel with Unifi Gateway for validation.
+**Requirements:**
+- Enable linger for persistence: `loginctl enable-linger $USER`
+- Services survive logout and reboot automatically
 
 ### Google Sheets Structure
 
@@ -117,14 +83,15 @@ systemctl --user start air-quality-collector.timer
 
 ## Network Configuration
 
-### mDNS Resolution Issues
+### mDNS Resolution
 
-On Unifi Gateway, .local domains don't resolve. Solution:
+If mDNS (.local domains) don't work on your network, use IP-based discovery:
 
-```python
-# collect_multi_fixed.py monkey-patches requests
-if 'airgradient_XXXXXX.local' in url:
-    url = url.replace('airgradient_XXXXXX.local', '192.168.X.XX')
+```bash
+# Run the IP discovery script
+python scripts/update_airgradient_ips.py
+
+# This updates sensors.json with current IPs
 ```
 
 ### DHCP Reservations Recommended

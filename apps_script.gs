@@ -77,14 +77,14 @@ Last data received: ${lastTime}
 Current time: ${now}
 
 Possible issues:
-1. Unifi Gateway cron job stopped
+1. Collector service stopped
 2. Network connectivity issue
 3. Sensor offline
 
 Action needed:
-1. SSH to gateway: ssh root@[your-gateway-ip]
-2. Check cron: crontab -l
-3. Test manually: python3 /data/scripts/collect_air.py
+1. SSH to your server
+2. Check status: systemctl --user status air-quality-collector.timer
+3. Check logs: journalctl --user -u air-quality-collector.service
     `.trim();
     
     MailApp.sendEmail(EMAIL_ADDRESS, subject, body);

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple air quality collector for Unifi Gateway
+Simple air quality collector
 Compares indoor (Airthings) vs outdoor (AirGradient) to track filter efficiency
 """
 

@@ -62,13 +62,6 @@ Error: HTTPConnectionPool(host='airgradient_XXXXX.local', port=80): Max retries 
    vi sensors.json
    ```
 
-3. **For Unifi Gateway**
-   ```bash
-   # .local domains don't resolve on Unifi
-   # Always use the wrapper script
-   ./scripts/run_collector.sh
-   ```
-
 ### 🔴 Airthings API Returns Empty Data
 
 #### Symptom
@@ -105,41 +98,30 @@ No sensors found in Airthings response
    "
    ```
 
-### 🔴 Cron Job Not Running on Unifi
+### 🔴 Data Collection Stops After Reboot/Logout
 
 #### Symptom
-Manual execution works but automated collection doesn't happen.
+Manual execution works but collection stops after logging out or rebooting.
 
 #### Solutions
 
-1. **Check Crontab**
+1. **Enable Linger for Systemd User Services**
    ```bash
-   crontab -l
-   # Should show:
-   # */5 * * * * /data/scripts/run_collector.sh >> /data/logs/cron.log 2>&1
+   # Check if linger is enabled
+   loginctl show-user $USER | grep Linger
+
+   # Enable linger (required for services to survive logout/reboot)
+   loginctl enable-linger $USER
    ```
 
-2. **Add Missing Cron Entry**
+2. **Verify Timer is Running**
    ```bash
-   crontab -e
-   # Add these lines:
-   PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-   */5 * * * * /data/scripts/run_collector.sh >> /data/logs/cron.log 2>&1
+   systemctl --user status air-quality-collector.timer
    ```
 
-3. **Check Cron Service**
+3. **Check Journal Logs**
    ```bash
-   ps aux | grep cron
-   # If not running:
-   /etc/init.d/cron start
-   ```
-
-4. **Setup Persistence After Updates**
-   ```bash
-   # Run the persistence setup script
-   /data/scripts/SETUP_AFTER_FIRMWARE_UPDATE.sh
-   
-   # This ensures cron jobs survive reboots
+   journalctl --user -u air-quality-collector.timer --since "1 hour ago"
    ```
 
 ### 🔴 Google Apps Script Not Sending Alerts
@@ -202,19 +184,10 @@ ModuleNotFoundError: No module named 'dotenv'
 
 #### Solutions
 
-1. **Local Development**
-   ```bash
-   # Use uv to install dependencies
-   uv sync --dev
-   ```
-
-2. **On Unifi Gateway**
-   ```bash
-   # Unifi uses pip3
-   pip3 install python-dotenv requests
-   # or use apt:
-   apt-get install -y python3-requests
-   ```
+```bash
+# Use uv to install dependencies
+uv sync --dev
+```
 
 ### 🔴 Unit Conversion Confusion
 
@@ -270,15 +243,12 @@ Update to latest Apps Script code if still experiencing issues.
 
 ### Check System Status
 ```bash
-# On Unifi Gateway
-cd /data/scripts
-./check_status.sh
+# Check systemd service status
+systemctl --user status air-quality-collector.timer
+systemctl --user status air-quality-collector.service
 
-# View recent logs
-tail -100 /data/logs/air_quality.log
-
-# Check last collection
-tail -1 /data/logs/air_quality_data.jsonl | jq .
+# Check recent journal logs
+journalctl --user -u air-quality-collector.service --since "1 hour ago"
 ```
 
 ### Test Individual Components
@@ -347,7 +317,7 @@ uv sync --dev
 3. **Report Issues**
    - [GitHub Issues](https://github.com/minghsuy/hvac-air-quality-analysis/issues)
    - Include error messages and logs
-   - Mention your setup (sensors, Unifi model, etc.)
+   - Mention your setup (sensors, system specs, etc.)
 
 ## Prevention Tips
 
@@ -367,14 +337,14 @@ uv sync --dev
 3. **Monitor System Health**
    - Set up a separate alert if no data for 1 hour
    - Check Google Sheets for regular updates
-   - Monitor Unifi Gateway storage space
+   - Monitor disk space periodically
 
 ## Working Example Output
 
 A successful collection run should look like:
 
 ```bash
-root@Cloud-Gateway-Ultra:/data/scripts# python3 collect_with_sheets_api_v2.py
+$ python collect_with_sheets_api_v2.py
 2025-09-01 10:00:00 - Starting collection...
 2025-09-01 10:00:01 - Airthings data: PM2.5=0.0, CO2=427, Temp=20.6°C
 2025-09-01 10:00:02 - AirGradient outdoor: PM2.5=8.73, CO2=420, Temp=25.2°C

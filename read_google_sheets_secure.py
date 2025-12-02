@@ -214,9 +214,7 @@ def main():
                 print(f"   Age: {age.total_seconds() / 3600:.1f} hours")
 
                 if age.total_seconds() > 3600:  # More than 1 hour old
-                    print(
-                        "\n⚠️  Data might be stale. Check if collector is running on Unifi Gateway"
-                    )
+                    print("\n⚠️  Data might be stale. Check if collector service is running")
 
     except Exception as e:
         print(f"\n❌ Error: {e}")

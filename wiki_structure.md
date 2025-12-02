@@ -20,10 +20,10 @@
 - Network configuration
 - Calibration procedures
 
-#### 2.3 Unifi Gateway Integration
-- SSH setup guide
-- Python environment configuration
-- Cron job scheduling
+#### 2.3 Server Deployment
+- Systemd user service setup
+- Enable linger for persistence
+- Timer configuration
 - Troubleshooting common issues
 
 ### 3. **Data Collection**
