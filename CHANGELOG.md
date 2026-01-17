@@ -7,31 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.0] - 2025-12-01
+## [0.5.0] - 2026-01-17
+
+### Added
+- **HVACMonitor v3** - Simplified Google Apps Script for filter monitoring (~850 lines, down from ~1500)
+- Efficiency-based filter alerts (measures actual performance, not theoretical decay)
+- Seasonal minimum outdoor PM2.5 thresholds (winter: 10, summer: 5, default: 7 μg/m³)
+- Zone filter time-based reminders (for filters that can't be efficiency-measured)
+- Location configuration via Script Properties for open-sourcing
+- Filter replacement analysis function (`analyzeFilterReplacements()`)
+- Efficiency data validation function (`analyzeEfficiencyData()`)
+- Seasonal calibration function (`calibrateEfficiencyThresholds()`)
 
 ### Changed
 - **BREAKING**: Migrated from Unifi Gateway to Spark DGX for data collection
 - Replaced cron-based collection with systemd user services and timers
 - Updated documentation to reflect new deployment architecture
+- Removed load-based filter life predictions (proven unreliable by data analysis)
 
 ### Removed
 - Unifi Gateway deployment scripts (`setup_unifi.sh`, `deploy_to_unifi.sh`)
 - Unifi-specific SSH setup guide (`ssh_into_uni_fi_cloud_gateway_ultra.md`)
 - Unifi firmware persistence scripts (`SETUP_AFTER_FIRMWARE_UPDATE.sh`)
 - Cron job configuration (replaced with systemd timers)
+- HVACMonitor v1/v2 (superseded by v3)
 
-### Why This Change?
-The Unifi Gateway served us well initially, but proved unreliable for long-term data collection:
+### Why These Changes?
 
-1. **Firmware updates wiped configurations** - Every Unifi firmware update removed our cron jobs and custom scripts, requiring manual re-setup
-2. **Limited persistence** - Data collection would stop unexpectedly after reboots or updates with no notification
-3. **Dependency challenges** - Installing Python packages on Unifi required workarounds
+**Spark DGX Migration:**
+The Unifi Gateway proved unreliable for long-term data collection:
+1. Firmware updates wiped configurations requiring manual re-setup
+2. Data collection stopped unexpectedly with no notification
+3. Installing Python packages required workarounds
 
-Spark DGX with systemd user services + linger provides:
-- **True persistence** - Services survive logout and reboot automatically
-- **Better monitoring** - `journalctl` for logs, `systemctl` for status
-- **No firmware surprises** - Standard Linux service management
-- **Simpler maintenance** - Use `uv` for dependencies like any other Python project
+Spark DGX with systemd provides true persistence, better monitoring, and simpler maintenance.
+
+**HVACMonitor v3 Simplification:**
+Analysis of 82,791 readings revealed:
+1. Load-based filter life prediction doesn't correlate with actual degradation
+2. A filter at 197% of "max life" still performed at 87.3% efficiency
+3. Efficiency-based alerts measure real performance, not theoretical decay
+4. Seasonal thresholds enable reliable measurement year-round
 
 ## [0.4.0] - 2025-09-01
 
