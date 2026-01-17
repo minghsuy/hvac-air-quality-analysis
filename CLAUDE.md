@@ -208,6 +208,46 @@ When updating `apps_script_code.gs`:
 4. Save and test with `testAlert()` function
 5. Check Script Properties has EMAIL_RECIPIENT set
 
+## HVACMonitor.gs (Google Apps Script)
+
+**Current version:** `HVACMonitor_v3.gs` - simplified, efficiency-based monitoring
+
+### Key Design Decisions
+
+1. **Efficiency-based alerts, NOT load-based predictions**
+   - Load-based filter life prediction doesn't work (proven by data)
+   - Measure actual efficiency: `((outdoor - indoor) / outdoor) * 100`
+   - Alert when efficiency drops below thresholds
+
+2. **Seasonal minimum outdoor PM2.5 thresholds**
+   ```javascript
+   minOutdoorPM: {
+     winter: 10,  // Dec-Feb: higher pollution
+     summer: 5,   // Jun-Aug: clean air
+     default: 7,  // Spring/Fall
+   }
+   ```
+
+3. **Two types of filter tracking**
+   - **Main/ERV filters**: Efficiency-based (measurable)
+   - **Zone filters (12x12x1)**: Time-based only (90 days default)
+
+4. **Configuration via Script Properties**
+   - `LOCATION_LAT`, `LOCATION_LON`, `LOCATION_NAME`, `LOCATION_TIMEZONE`
+   - `EMAIL_RECIPIENT` for alerts
+
+### Updating HVACMonitor
+1. Copy contents of `HVACMonitor_v3.gs`
+2. Paste into Google Sheets → Extensions → Apps Script
+3. Set Script Properties for your location
+4. Set up triggers: `runAllChecks` (hourly), `weeklyReport` (weekly)
+5. Run `calibrateEfficiencyThresholds()` monthly for your data
+
+### Testing Functions
+- `testEfficiencyCheck()` - Test filter efficiency alerts
+- `analyzeFilterReplacements()` - Compare before/after replacement
+- `analyzeEfficiencyData()` - Validate measurement robustness
+
 ## Remember
 
 1. **Always run tests/linting before release**
