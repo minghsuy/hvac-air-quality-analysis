@@ -29,10 +29,7 @@ OUTDOOR_IP = os.environ.get("AIRGRADIENT_OUTDOOR_IP", "192.168.X.XX")
 INDOOR_IP = os.environ.get("AIRGRADIENT_INDOOR_IP", "192.168.X.XX")
 
 # Google Sheets configuration - ALL FROM ENVIRONMENT VARIABLES
-SPREADSHEET_ID = os.environ.get("GOOGLE_SPREADSHEET_ID")
-if not SPREADSHEET_ID:
-    print("❌ Error: GOOGLE_SPREADSHEET_ID not set in .env file")
-    exit(1)
+SPREADSHEET_ID = os.environ.get("GOOGLE_SPREADSHEET_ID", "")
 
 # Sheet tab name - use environment variable or default to main sheet
 SHEET_TAB_NAME = os.environ.get("GOOGLE_SHEET_TAB", "")  # Empty string means use main sheet
@@ -555,6 +552,11 @@ def main():
 
 if __name__ == "__main__":
     import sys
+
+    # Validate required configuration
+    if not SPREADSHEET_ID:
+        print("❌ Error: GOOGLE_SPREADSHEET_ID not set in .env file")
+        sys.exit(1)
 
     # Add instructions
     if len(sys.argv) == 1:
