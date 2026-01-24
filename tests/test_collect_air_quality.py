@@ -1,6 +1,5 @@
 """Tests for air quality collection functionality"""
 
-import pytest
 from unittest.mock import patch, MagicMock
 import sys
 
