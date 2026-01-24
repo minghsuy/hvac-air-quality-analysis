@@ -1,0 +1,42 @@
+name: Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        run: |
+          echo "files=$(gh pr diff ${{ github.event.pull_request.number }} --name-only | tr '\n' ' ')" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Claude Code Review
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-sonnet-4-20250514
+          direct_prompt: |
+            Review this pull request. Focus on:
+            1. Code correctness and potential bugs
+            2. Security issues (especially exposed secrets, IPs, or credentials)
+            3. Test coverage for new functionality
+            4. Adherence to project conventions (uv for packages, flat structure)
+
+            Changed files: ${{ steps.changed-files.outputs.files }}
+
+            Be concise. Only comment on issues that need attention.
+            For minor style issues that ruff would catch, skip them.
+          timeout_minutes: 10
