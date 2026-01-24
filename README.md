@@ -1,26 +1,75 @@
 # HVAC Air Quality Monitoring System
 
-**Real-time filter efficiency tracking to prevent asthma triggers before they happen.**
+**Manufacturer says replace filters every 45 days. My data says 120+ days. Here's why.**
 
 [![Release](https://img.shields.io/github/v/release/minghsuy/hvac-air-quality-analysis)](https://github.com/minghsuy/hvac-air-quality-analysis/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## 🎯 Why This Matters
+## The Problem
 
-After experiencing recurring asthma symptoms correlated with degraded HVAC filter performance, I built this system to:
-- **Predict filter replacement timing** based on actual efficiency, not arbitrary schedules
-- **Prevent health issues** by replacing filters before efficiency drops below safe thresholds
-- **Save money** by extending filter life when efficiency remains high
-- **Track multiple rooms** independently for targeted air quality management
+My family has asthma. After noticing symptoms correlating with degraded HVAC filter performance, I needed answers:
 
-## 📊 Current Status (v0.4.0 - September 2025)
+- **When should I actually replace filters?** (Not when the manufacturer says, but when efficiency drops)
+- **How do I measure "efficiency" objectively?** (Indoor PM2.5 alone is meaningless without outdoor context)
+- **Can I predict problems before they affect health?**
 
-- ✅ **Smart alerting deployed** with confidence-based notifications
-- ✅ **Schema migration complete** - 3,985 historical rows preserved
-- ✅ **Multi-room monitoring active** - Master & second bedrooms tracked
-- ✅ **Filter efficiency stable** at 85-100% after 70+ days on MERV 13
+## The Solution
 
-## 🚀 Quick Start
+6+ months of continuous monitoring with **82,791 sensor readings** revealed:
+
+| What Manufacturer Says | What Data Shows |
+|------------------------|-----------------|
+| Replace every 45 days | MERV 13 maintains >85% efficiency for **120+ days** |
+| Indoor air quality sensors are enough | You need **outdoor baseline** to calculate true efficiency |
+| Replace on schedule | Replace when **efficiency drops below threshold** |
+
+**Result**: Better air quality, fewer asthma triggers, $130-910/year saved on unnecessary filter replacements.
+
+## How It Works
+
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  Airthings   │     │ AirGradient  │     │ AirGradient  │
+│   (Indoor)   │     │  (Outdoor)   │     │  (Indoor #2) │
+└──────┬───────┘     └──────┬───────┘     └──────┬───────┘
+       │                    │                     │
+       └────────────────────┴─────────────────────┘
+                           │
+                    ┌──────▼───────┐
+                    │   Collector   │
+                    │  (Spark DGX)  │
+                    └──────┬───────┘
+                           │
+                    ┌──────▼───────┐
+                    │ Google Sheets │
+                    │   (Storage)   │
+                    └──────┬───────┘
+                           │
+                    ┌──────▼───────┐
+                    │  Apps Script  │
+                    │   (Alerting)  │
+                    └──────────────┘
+```
+
+**Filter Efficiency Formula**:
+```
+Efficiency = ((Outdoor PM2.5 - Indoor PM2.5) / Outdoor PM2.5) × 100%
+```
+
+This is why indoor-only monitoring fails: if outdoor air is clean, even a failing filter looks effective.
+
+## Key Findings
+
+After analyzing 82,791 readings over 6 months:
+
+1. **MERV 13 filters maintain >85% efficiency for 120+ days** (not 45 days as marketed)
+2. **Load-based predictions don't work** - a filter at 197% of "max life" still performed at 87.3% efficiency
+3. **Seasonal calibration matters** - winter pollution requires different thresholds than summer
+4. **Indoor PM2.5 stays below 12 μg/m³** (WHO guideline) with proper monitoring
+
+See the [Project Wiki](https://github.com/minghsuy/hvac-air-quality-analysis/wiki) for detailed analysis and visualizations.
+
+## Quick Start
 
 ### Prerequisites
 - Python 3.12+
@@ -49,42 +98,15 @@ cp .env.example .env
 # Edit .env with your credentials
 ```
 
-## 📡 System Architecture
+### Configuration
 
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│  Airthings   │     │ AirGradient  │     │ AirGradient  │
-│   (Indoor)   │     │  (Outdoor)   │     │  (Indoor #2) │
-└──────┬───────┘     └──────┬───────┘     └──────┬───────┘
-       │                    │                     │
-       └────────────────────┴─────────────────────┘
-                           │
-                    ┌──────▼───────┐
-                    │   Collector   │
-                    │  (Spark DGX)  │
-                    └──────┬───────┘
-                           │
-                    ┌──────▼───────┐
-                    │ Google Sheets │
-                    │   (Storage)   │
-                    └──────┬───────┘
-                           │
-                    ┌──────▼───────┐
-                    │  Apps Script  │
-                    │   (Alerting)  │
-                    └──────────────┘
-```
-
-## 🔧 Configuration
-
-### Environment Variables (.env)
 ```bash
-# Airthings API
+# .env file
 AIRTHINGS_CLIENT_ID=your_client_id
 AIRTHINGS_CLIENT_SECRET=your_secret
 AIRTHINGS_DEVICE_SERIAL=your_device_serial
 
-# AirGradient Sensors (optional)
+# AirGradient Sensors (optional but recommended)
 AIRGRADIENT_SERIAL=outdoor_sensor_serial
 AIRGRADIENT_INDOOR_SERIAL=indoor_sensor_serial
 
@@ -93,70 +115,47 @@ GOOGLE_SPREADSHEET_ID=your_spreadsheet_id
 GOOGLE_SHEET_TAB=Cleaned_Data_20250831
 ```
 
-### Google Service Account
-1. Create service account in Google Cloud Console
-2. Download credentials as `google-credentials.json`
-3. Share your Google Sheet with the service account email
-
-## 📈 Data Collection
-
-The system collects data every 5 minutes, tracking:
-
-- **Indoor Metrics**: PM2.5, CO2, VOC, temperature, humidity, radon
-- **Outdoor Metrics**: PM2.5, CO2, VOC, NOX, temperature, humidity
-- **Calculated**: Real-time filter efficiency percentage
-- **Smart Alerts**: Confidence-based notifications avoiding false positives
-
 ### Running the Collector
 
 ```bash
 # Test run
-python collect_with_sheets_api_v2.py
+python collect_with_sheets_api_v2.py --test
 
-# For persistent collection, use systemd user service with linger enabled
+# For persistent collection, use systemd user service
 # See CLAUDE.md for systemd setup instructions
 ```
 
-## 🔔 Smart Alerting System
+## Smart Alerting
 
-The Google Apps Script provides intelligent notifications:
+The Google Apps Script (`HVACMonitor_v3.gs`) provides:
 
-- **High Confidence** alerts when outdoor PM2.5 > 10 μg/m³
-- **Medium Confidence** when outdoor PM2.5 is 5-10 μg/m³
-- **Activity suppression** during known high-activity hours
-- **Median-based** calculations to filter temporary spikes
+- **Efficiency-based filter alerts** - measures actual performance, not theoretical decay
+- **Seasonal thresholds** - auto-calibrates for winter vs. summer air quality
+- **Time-based reminders** - for filters that can't be efficiency-measured (zone filters)
+- **Barometric pressure alerts** - weather-triggered health notifications
 
-## 📚 Documentation
+## Documentation
 
 - [Data Dictionary](DATA_DICTIONARY.md) - Field definitions and units
 - [Troubleshooting Guide](TROUBLESHOOTING.md) - Common issues and solutions
 - [Project Wiki](https://github.com/minghsuy/hvac-air-quality-analysis/wiki) - Detailed analysis and results
+- [Architecture](docs/ARCHITECTURE.md) - System design
+- [Lessons Learned](docs/LESSONS_LEARNED.md) - What worked and what didn't
 
-## 🛠️ Development
+## Development
 
 ```bash
 # Run tests
-pytest
+uv run pytest
 
 # Format code
 uv run ruff format .
 
 # Lint
 uv run ruff check .
-
-# Type checking
-uv run mypy .
 ```
 
-## 📊 Key Findings
-
-After 6 months of monitoring:
-- MERV 13 filters maintain >85% efficiency for 70+ days
-- Indoor PM2.5 stays below 12 μg/m³ (WHO guideline)
-- Filter replacement can be extended from 45 to 120+ days
-- Estimated savings: $130-910/year on filter costs
-
-## 🤝 Contributing
+## Contributing
 
 Contributions welcome! Please:
 1. Fork the repository
@@ -164,13 +163,13 @@ Contributions welcome! Please:
 3. Run tests and linting
 4. Submit a pull request
 
-## 📄 License
+## License
 
-MIT License - See [LICENSE](LICENSE) for details
+MIT License - See [LICENSE](LICENSE) for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-- [Airthings](https://www.airthings.com/) for excellent indoor air quality sensors
+- [Airthings](https://www.airthings.com/) for indoor air quality sensors
 - [AirGradient](https://www.airgradient.com/) for open-source outdoor monitoring
 
 ---

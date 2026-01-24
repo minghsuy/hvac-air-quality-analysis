@@ -6,7 +6,7 @@ import sys
 
 sys.path.insert(0, ".")  # Add root to path
 
-import collect_air_quality
+import collect_with_sheets_api_v2 as collector
 
 
 class TestFilterEfficiencyCalculation:
@@ -14,72 +14,45 @@ class TestFilterEfficiencyCalculation:
 
     def test_normal_efficiency(self):
         """Test normal filter efficiency calculation"""
-        assert collect_air_quality.calculate_filter_efficiency(5, 10) == 50.0
-        assert collect_air_quality.calculate_filter_efficiency(2, 20) == 90.0
+        assert collector.calculate_efficiency(5, 10) == 50.0
+        assert collector.calculate_efficiency(2, 20) == 90.0
 
     def test_perfect_efficiency(self):
         """Test when indoor PM2.5 is zero"""
-        assert collect_air_quality.calculate_filter_efficiency(0, 10) == 100.0
+        assert collector.calculate_efficiency(0, 10) == 100.0
 
     def test_no_outdoor_pollution(self):
         """Test when outdoor PM2.5 is zero"""
-        assert collect_air_quality.calculate_filter_efficiency(5, 0) == 0
+        assert collector.calculate_efficiency(5, 0) == 0.0
 
     def test_same_indoor_outdoor(self):
         """Test when indoor equals outdoor (no filtration)"""
-        assert collect_air_quality.calculate_filter_efficiency(10, 10) == 0
+        assert collector.calculate_efficiency(10, 10) == 0.0
 
     def test_indoor_worse_than_outdoor(self):
         """Test when indoor is worse than outdoor (clamped to 0)"""
-        assert collect_air_quality.calculate_filter_efficiency(20, 10) == 0
+        assert collector.calculate_efficiency(20, 10) == 0.0
 
-    def test_negative_values(self):
-        """Test edge case with negative values"""
-        assert collect_air_quality.calculate_filter_efficiency(-5, 10) == 100.0
-        assert collect_air_quality.calculate_filter_efficiency(5, -10) == 0
+    def test_negative_indoor(self):
+        """Test edge case with negative indoor (clamped to 100%)"""
+        assert collector.calculate_efficiency(-5, 10) == 100.0
+
+    def test_negative_outdoor(self):
+        """Test edge case with negative outdoor"""
+        assert collector.calculate_efficiency(5, -10) == 0.0
 
 
 class TestAirthingsAPI:
     """Test Airthings API integration"""
 
     @patch("requests.post")
-    def test_get_token_success(self, mock_post):
-        """Test successful token retrieval"""
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"access_token": "test_token_123"}
-        mock_response.raise_for_status = MagicMock()
-        mock_post.return_value = mock_response
-
-        with patch.dict(
-            "os.environ",
-            {"AIRTHINGS_CLIENT_ID": "test_id", "AIRTHINGS_CLIENT_SECRET": "test_secret"},
-        ):
-            token = collect_air_quality.get_airthings_token()
-            assert token == "test_token_123"
-
-            # Verify API was called correctly
-            mock_post.assert_called_once()
-            call_args = mock_post.call_args
-            assert call_args[0][0] == "https://accounts-api.airthings.com/v1/token"
-            assert call_args[1]["json"]["grant_type"] == "client_credentials"
-
-    @patch("requests.post")
-    def test_get_token_failure(self, mock_post):
-        """Test token retrieval failure"""
-        mock_post.side_effect = Exception("API Error")
-
-        with patch.dict(
-            "os.environ",
-            {"AIRTHINGS_CLIENT_ID": "test_id", "AIRTHINGS_CLIENT_SECRET": "test_secret"},
-        ):
-            with pytest.raises(Exception):
-                collect_air_quality.get_airthings_token()
-
     @patch("requests.get")
-    @patch("collect_air_quality.get_airthings_token")
-    def test_get_airthings_data_success(self, mock_token, mock_get):
+    def test_get_airthings_data_success(self, mock_get, mock_post):
         """Test successful data retrieval from Airthings"""
-        mock_token.return_value = "test_token"
+        # Mock token response
+        mock_token_response = MagicMock()
+        mock_token_response.json.return_value = {"access_token": "test_token"}
+        mock_post.return_value = mock_token_response
 
         # Mock account response
         mock_account_response = MagicMock()
@@ -97,6 +70,8 @@ class TestAirthingsAPI:
                         {"sensorType": "co2", "value": 450, "unit": "ppm"},
                         {"sensorType": "temp", "value": 22.5, "unit": "°C"},
                         {"sensorType": "humidity", "value": 45, "unit": "%"},
+                        {"sensorType": "voc", "value": 100, "unit": "ppb"},
+                        {"sensorType": "radonShortTermAvg", "value": 10, "unit": "Bq/m³"},
                     ],
                 }
             ]
@@ -104,21 +79,31 @@ class TestAirthingsAPI:
 
         mock_get.side_effect = [mock_account_response, mock_sensor_response]
 
-        with patch.dict("os.environ", {"AIRTHINGS_DEVICE_SERIAL": "123456"}):
-            data = collect_air_quality.get_airthings_data()
+        with patch.dict(
+            "os.environ",
+            {
+                "AIRTHINGS_CLIENT_ID": "test_id",
+                "AIRTHINGS_CLIENT_SECRET": "test_secret",
+                "AIRTHINGS_DEVICE_SERIAL": "123456",
+            },
+        ):
+            data = collector.get_airthings_data()
 
             assert data is not None
-            assert data["battery"] == 100
             assert data["pm25"] == 5.0
             assert data["co2"] == 450
             assert data["temp"] == 22.5
             assert data["humidity"] == 45
+            assert data["room"] == "master_bedroom"
+            assert data["sensor_type"] == "airthings"
 
+    @patch("requests.post")
     @patch("requests.get")
-    @patch("collect_air_quality.get_airthings_token")
-    def test_get_airthings_data_no_results(self, mock_token, mock_get):
+    def test_get_airthings_data_no_results(self, mock_get, mock_post):
         """Test when Airthings returns no results"""
-        mock_token.return_value = "test_token"
+        mock_token_response = MagicMock()
+        mock_token_response.json.return_value = {"access_token": "test_token"}
+        mock_post.return_value = mock_token_response
 
         mock_account_response = MagicMock()
         mock_account_response.json.return_value = {"accounts": [{"id": "test_account_id"}]}
@@ -128,8 +113,15 @@ class TestAirthingsAPI:
 
         mock_get.side_effect = [mock_account_response, mock_sensor_response]
 
-        data = collect_air_quality.get_airthings_data()
-        assert data is None
+        with patch.dict(
+            "os.environ",
+            {
+                "AIRTHINGS_CLIENT_ID": "test_id",
+                "AIRTHINGS_CLIENT_SECRET": "test_secret",
+            },
+        ):
+            data = collector.get_airthings_data()
+            assert data is None
 
 
 class TestAirGradientAPI:
@@ -139,6 +131,7 @@ class TestAirGradientAPI:
     def test_get_airgradient_data_success(self, mock_get):
         """Test successful data retrieval from AirGradient"""
         mock_response = MagicMock()
+        mock_response.status_code = 200
         mock_response.json.return_value = {
             "pm02Compensated": 3.5,
             "atmpCompensated": 25.0,
@@ -147,11 +140,10 @@ class TestAirGradientAPI:
             "tvocIndex": 100,
             "noxIndex": 1,
         }
-        mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 
-        with patch.dict("os.environ", {"AIRGRADIENT_SERIAL": "test_serial"}):
-            data = collect_air_quality.get_airgradient_data()
+        with patch.dict("os.environ", {"AIRGRADIENT_OUTDOOR_IP": "192.168.X.XX"}):
+            data = collector.get_airgradient_data("test123", "outdoor", "192.168.X.XX")
 
             assert data is not None
             assert data["pm25"] == 3.5
@@ -160,140 +152,83 @@ class TestAirGradientAPI:
             assert data["co2"] == 420
             assert data["voc"] == 100
             assert data["nox"] == 1
+            assert data["room"] == "outdoor"
 
     @patch("requests.get")
     def test_get_airgradient_data_timeout(self, mock_get):
         """Test AirGradient API timeout"""
         mock_get.side_effect = Exception("Connection timeout")
 
-        with patch.dict("os.environ", {"AIRGRADIENT_SERIAL": "test_serial"}):
-            data = collect_air_quality.get_airgradient_data()
-            assert data is None
+        data = collector.get_airgradient_data("test123", "outdoor", "192.168.X.XX")
+        assert data is None
 
     @patch("requests.get")
-    def test_get_airgradient_data_missing_fields(self, mock_get):
-        """Test AirGradient data with missing fields"""
+    def test_get_airgradient_data_uses_compensated_values(self, mock_get):
+        """Test that compensated values are preferred over raw values"""
         mock_response = MagicMock()
+        mock_response.status_code = 200
         mock_response.json.return_value = {
-            "pm02Compensated": 3.5,
-            # Missing other fields
+            "pm02": 5.0,  # Raw value
+            "pm02Compensated": 3.5,  # Compensated value (should be used)
+            "atmp": 24.0,
+            "atmpCompensated": 25.0,
+            "rhum": 48.0,
+            "rhumCompensated": 50.0,
+            "rco2": 420,
+            "tvocIndex": 100,
+            "noxIndex": 1,
         }
-        mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 
-        with patch.dict("os.environ", {"AIRGRADIENT_SERIAL": "test_serial"}):
-            data = collect_air_quality.get_airgradient_data()
+        data = collector.get_airgradient_data("test123", "outdoor", "192.168.X.XX")
 
-            assert data is not None
-            assert data["pm25"] == 3.5
-            assert data["temp"] == 0  # Default value
-            assert data["humidity"] == 0  # Default value
+        # Should use compensated values
+        assert data["pm25"] == 3.5  # Not 5.0
+        assert data["temp"] == 25.0  # Not 24.0
+        assert data["humidity"] == 50.0  # Not 48.0
 
 
 class TestGoogleSheetsIntegration:
-    """Test Google Sheets form submission"""
+    """Test Google Sheets API integration"""
 
-    @patch("requests.post")
-    def test_send_to_google_sheets_success(self, mock_post):
-        """Test successful form submission"""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_post.return_value = mock_response
+    @patch.object(collector, "get_sheets_service")
+    def test_append_to_sheet_success(self, mock_service):
+        """Test successful row append"""
+        mock_sheets = MagicMock()
+        mock_service.return_value = mock_sheets
 
-        test_data = {
-            "timestamp": "2025-07-27T10:00:00",
-            "indoor_pm25": 5.0,
-            "outdoor_pm25": 10.0,
-            "filter_efficiency": 50.0,
+        mock_values = MagicMock()
+        mock_sheets.spreadsheets.return_value.values.return_value = mock_values
+        mock_values.append.return_value.execute.return_value = {
+            "updates": {"updatedRows": 1, "updatedRange": "Sheet1!A2:R2"}
         }
 
-        with patch.dict(
-            "os.environ",
-            {
-                "GOOGLE_FORM_ID": "test_form_id",
-                "FORM_TIMESTAMP": "entry.123",
-                "FORM_INDOOR_PM25": "entry.456",
-                "FORM_OUTDOOR_PM25": "entry.789",
-                "FORM_EFFICIENCY": "entry.012",
-            },
-        ):
-            result = collect_air_quality.send_to_google_sheets(test_data)
-            assert result is True
+        result = collector.append_to_sheet(
+            mock_sheets,
+            "test_spreadsheet_id",
+            ["2025-01-01", "sensor1", "room1", "type1", 5, 10, 50.0],
+        )
 
-            # Verify form data was sent correctly
-            mock_post.assert_called_once()
-            call_args = mock_post.call_args
-            assert "test_form_id" in call_args[0][0]
-            assert call_args[1]["data"]["entry.123"] == "2025-07-27T10:00:00"
-            assert call_args[1]["data"]["entry.456"] == 5.0
-
-    @patch("requests.post")
-    def test_send_to_google_sheets_no_form_id(self, mock_post):
-        """Test when Google Form ID is not configured"""
-        test_data = {"indoor_pm25": 5.0}
-
-        with patch.dict("os.environ", {}, clear=True):
-            result = collect_air_quality.send_to_google_sheets(test_data)
-            assert result is False
-            mock_post.assert_not_called()
+        assert result is True
 
 
-class TestMainFlow:
-    """Test the main collection flow"""
+class TestEfficiencyEdgeCases:
+    """Test edge cases in efficiency calculation"""
 
-    @patch("collect_air_quality.send_to_google_sheets")
-    @patch("collect_air_quality.get_airgradient_data")
-    @patch("collect_air_quality.get_airthings_data")
-    @patch("builtins.print")
-    def test_main_success_flow(self, mock_print, mock_airthings, mock_airgradient, mock_sheets):
-        """Test successful end-to-end flow"""
-        mock_airthings.return_value = {
-            "pm25": 5.0,
-            "co2": 450,
-            "temp": 22.5,
-            "humidity": 45,
-            "voc": 50,
-        }
+    def test_very_low_outdoor_pm25(self):
+        """Test with very low outdoor PM2.5 (precision issues)"""
+        # When outdoor is very low, small indoor values can cause large efficiency swings
+        assert collector.calculate_efficiency(0, 1) == 100.0
+        assert collector.calculate_efficiency(1, 1) == 0.0
+        assert collector.calculate_efficiency(0.5, 1) == 50.0
 
-        mock_airgradient.return_value = {
-            "pm25": 10.0,
-            "co2": 420,
-            "temp": 25.0,
-            "humidity": 50,
-            "voc": 100,
-            "nox": 1,
-        }
+    def test_rounding(self):
+        """Test that efficiency is rounded to 2 decimal places"""
+        result = collector.calculate_efficiency(1, 3)
+        # (3-1)/3 = 0.666... should round to 66.67
+        assert result == 66.67
 
-        mock_sheets.return_value = True
-
-        with patch("builtins.open", create=True), patch("os.chmod"):
-            collect_air_quality.main()
-
-        # Verify APIs were called
-        mock_airthings.assert_called_once()
-        mock_airgradient.assert_called_once()
-        mock_sheets.assert_called_once()
-
-        # Verify efficiency calculation
-        sheets_data = mock_sheets.call_args[0][0]
-        assert sheets_data["indoor_pm25"] == 5.0
-        assert sheets_data["outdoor_pm25"] == 10.0
-        assert sheets_data["filter_efficiency"] == 50.0
-
-        # Verify console output
-        print_calls = [str(call[0][0]) for call in mock_print.call_args_list]
-        assert any("Indoor PM2.5: 5" in call for call in print_calls)
-        assert any("Filter Efficiency: 50.0%" in call for call in print_calls)
-
-    @patch("collect_air_quality.get_airthings_data")
-    @patch("builtins.print")
-    def test_main_airthings_failure(self, mock_print, mock_airthings):
-        """Test when Airthings API fails"""
-        mock_airthings.return_value = None
-
-        with patch("builtins.open", create=True), patch("os.chmod"):
-            collect_air_quality.main()
-
-        # Verify error message
-        print_calls = [str(call[0][0]) for call in mock_print.call_args_list]
-        assert any("Failed to get Airthings data" in call for call in print_calls)
+    def test_both_zero(self):
+        """Test when both indoor and outdoor are zero"""
+        # Edge case: 0/0 should return 100% (perfect efficiency when no pollution)
+        assert collector.calculate_efficiency(0, 0) == 100.0

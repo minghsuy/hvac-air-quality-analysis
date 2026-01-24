@@ -5,8 +5,7 @@
 ### Data Collection
 ```
 ├── collect_with_sheets_api_v2.py  # Main collector with multi-room support
-├── collect_with_sheets_api.py     # Legacy single-room collector
-├── sensors.json                   # Sensor configuration (IPs, rooms)
+├── sensors.json                   # Sensor configuration (IPs, rooms) - gitignored
 └── google-credentials.json        # Service account credentials (gitignored)
 ```
 
@@ -21,7 +20,7 @@
 
 ### Google Apps Script
 ```
-└── apps_script_code.gs           # Smart alerting system with confidence levels
+└── HVACMonitor_v3.gs             # Filter monitoring with efficiency-based alerts
 ```
 
 ## Configuration
@@ -55,28 +54,25 @@
 ├── docs/
 │   ├── ARCHITECTURE.md          # System design and data flow
 │   ├── LESSONS_LEARNED.md       # Key insights from deployment
-│   ├── 5_MINUTE_INTERVALS.md    # Why we use 5-minute collection
-│   └── indoor_airqualitys_hidden_impact_on_family_health.md
-├── RELEASE_CHECKLIST.md         # Release process documentation
-├── VISUALIZATION_WORKFLOW.md    # Chart generation best practices
-├── NEXT_PHASE.md               # Future enhancements
-└── wiki_structure.md           # Wiki organization guide
+│   └── 5_MINUTE_INTERVALS.md    # Why we use 5-minute collection
+└── RELEASE_CHECKLIST.md         # Release process documentation
 ```
 
 ## Utility Scripts
 
 ```
 └── scripts/
-    ├── update_airgradient_ips.py # Dynamic IP discovery
-    ├── check_status.sh           # System health check
-    └── archive/                  # Old versions for reference
+    ├── read_sheets_simple.py      # Simple Google Sheets reader
+    ├── setup_google_sheets_api.py # API setup helper
+    ├── analysis/                  # Analysis scripts
+    └── collection/                # Collection utilities
 ```
 
 ## Testing
 ```
 └── tests/
-    ├── test_collector.py         # Unit tests for collector
-    └── test_integration.py       # Integration tests
+    ├── conftest.py                # Pytest configuration
+    └── test_collect_air_quality.py # Unit tests for collector
 ```
 
 ## CI/CD
@@ -95,7 +91,7 @@
 | `sensors.json` | Sensor IP addresses | When IPs change |
 | `google-credentials.json` | Auth for Sheets API | Never (gitignored) |
 | `.env` | API credentials | As needed (gitignored) |
-| `apps_script_code.gs` | Google Sheets alerting | Rarely |
+| `HVACMonitor_v3.gs` | Google Sheets filter monitoring | Rarely |
 | `DATA_DICTIONARY.md` | Data schema documentation | When fields change |
 
 ## Data Flow
@@ -103,11 +99,11 @@
 ```
 1. Sensors (Airthings, AirGradient)
    ↓
-2. Collector Script (every 5 minutes via cron)
+2. Collector Script (every 5 minutes via systemd timer)
    ↓
 3. Google Sheets (data storage)
    ↓
-4. Apps Script (smart alerting)
+4. Apps Script (filter efficiency monitoring)
    ↓
 5. Email Notifications (when thresholds exceeded)
 ```
@@ -118,11 +114,11 @@
 # Test collection locally
 python collect_with_sheets_api_v2.py
 
-# Update sensor IPs
-python scripts/update_airgradient_ips.py
+# Run with verbose test output
+python collect_with_sheets_api_v2.py --test
 
-# Check system status
-./scripts/check_status.sh
+# Check systemd timer status (on deployment server)
+systemctl --user status air-quality-collector.timer
 ```
 
 ## Storage Locations
@@ -130,9 +126,7 @@ python scripts/update_airgradient_ips.py
 | Data Type | Location | Persistence |
 |-----------|----------|-------------|
 | Collected data | Google Sheets | Permanent |
-| Local backup | `/data/logs/air_quality_data.jsonl` | Until cleared |
-| Application logs | `/data/logs/air_quality.log` | Rotated weekly |
-| Cron logs | `/data/logs/cron.log` | Rotated daily |
+| Application logs | `journalctl --user -u air-quality-collector` | System managed |
 
 ## Important Notes
 
