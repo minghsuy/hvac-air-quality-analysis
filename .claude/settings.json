@@ -1,0 +1,35 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git push*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "branch=$(git branch --show-current 2>/dev/null); if [ \"$branch\" = \"main\" ] || [ \"$branch\" = \"master\" ]; then echo '🚫 BLOCKED: Use a feature branch + PR. See /push-changes skill.' >&2; exit 1; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash(git commit*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '💡 Reminder: Run security checks before committing (grep for IPs, MACs, emails)' >&2"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.py)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run ruff check \"$CLAUDE_FILE_PATH\" --fix --quiet 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -42,6 +42,7 @@ data/
 *.jsonl
 !data/.gitkeep
 !*_template.csv
+!.claude/settings.json
 
 # Logs
 logs/
@@ -66,3 +67,10 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+
+# Claude Code - local settings (permissions, personal config)
+.claude/settings.local.json
+
+# Claude Code - these SHOULD be committed:
+# .claude/settings.json (project hooks)
+# .claude/skills/ (project-specific skills)
