@@ -442,6 +442,7 @@ function checkZoneFilters() {
   const filters = getFiltersFromSheet();
   const now = new Date();
   const alerts = [];
+  const props = PropertiesService.getScriptProperties();
 
   Object.entries(CONFIG.ZONE_FILTER_DAYS).forEach(([key, maxDays]) => {
     const filter = filters[key];
@@ -451,16 +452,35 @@ function checkZoneFilters() {
     const daysRemaining = maxDays - daysInService;
 
     if (daysRemaining <= 0) {
-      alerts.push({
-        level: 'WARNING',
-        message: `🔄 ZONE FILTER: ${filter.location || key}\n` +
-                 `${daysInService} days since change - time to replace (${filter.model || '12x12x1'})`
-      });
+      // Overdue - always alert (but only once per day)
+      const lastAlertKey = `ZONE_OVERDUE_${key}`;
+      const lastAlert = props.getProperty(lastAlertKey);
+      const today = now.toISOString().split('T')[0];
+
+      if (lastAlert !== today) {
+        alerts.push({
+          level: 'WARNING',
+          message: `🔄 ZONE FILTER: ${filter.location || key}\n` +
+                   `${daysInService} days since change - time to replace (${filter.model || '12x12x1'})`
+        });
+        props.setProperty(lastAlertKey, today);
+      }
     } else if (daysRemaining <= 14) {
-      alerts.push({
-        level: 'INFO',
-        message: `ℹ️ Zone filter (${filter.location || key}): ${daysRemaining} days until replacement`
-      });
+      // Upcoming - only alert at milestones (14, 7, 3, 1 days) and once per milestone
+      const milestones = [14, 7, 3, 1];
+      if (milestones.includes(daysRemaining)) {
+        const lastAlertKey = `ZONE_REMINDER_${key}`;
+        const lastAlertDays = parseInt(props.getProperty(lastAlertKey) || '999');
+
+        // Only alert if this is a new milestone (days remaining decreased)
+        if (daysRemaining < lastAlertDays) {
+          alerts.push({
+            level: 'INFO',
+            message: `ℹ️ Zone filter (${filter.location || key}): ${daysRemaining} days until replacement`
+          });
+          props.setProperty(lastAlertKey, String(daysRemaining));
+        }
+      }
     }
   });
 
