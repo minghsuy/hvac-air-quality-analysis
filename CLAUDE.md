@@ -2,6 +2,33 @@
 
 **PURPOSE:** Prevent common mistakes when working with this codebase. Read this FIRST.
 
+## 🚨 CRITICAL: Git Workflow (Feature Branch + PR)
+
+**NEVER push directly to main.** Always use feature branches and PRs.
+
+```bash
+# 1. Create feature branch
+git checkout -b feat/your-feature-name
+
+# 2. Make changes and commit
+# Use /push-changes skill (enforces conventional commits)
+
+# 3. Create PR
+gh pr create
+
+# 4. After review/merge, clean up
+git checkout main && git pull && git branch -d feat/your-feature-name
+```
+
+### Available Skills (user-level)
+| Skill | Purpose |
+|-------|---------|
+| `/push-changes` | Commit with conventional format, blocks main pushes |
+| `/release` | Full release workflow with version bump |
+| `/review-loop` | Iterate on PR review comments |
+| `/pr-comments` | Fetch and categorize PR review comments |
+| `/hvac-status` | Check sensor collection status (project-level) |
+
 ## 🚨 CRITICAL: Release Process (Do This EXACTLY)
 
 ```bash
