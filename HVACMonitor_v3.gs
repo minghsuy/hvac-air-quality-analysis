@@ -81,6 +81,13 @@ const CONFIG = {
     high: 800,
   },
 
+  // Indoor PM spike detection (suggests increasing ERV)
+  INDOOR_SPIKE: {
+    threshold: 5,         // Indoor must exceed outdoor by this much (μg/m³)
+    maxOutdoorPM: 25,     // Only suggest ERV increase if outdoor is clean
+    cooldownMinutes: 60,  // Don't re-alert within this window
+  },
+
   // Location defaults (override via Script Properties)
   LOCATION_DEFAULTS: {
     latitude: 37.35,
@@ -134,7 +141,13 @@ function runAllChecks() {
     alerts.you.push(...efficiency.alerts);
   }
 
-  // 4. Check zone filter ages (time-based - can't measure efficiency)
+  // 4. Check for indoor PM spikes (cooking, cleaning)
+  const indoorSpike = checkIndoorSpike();
+  if (indoorSpike.alerts.length > 0) {
+    alerts.you.push(...indoorSpike.alerts);
+  }
+
+  // 5. Check zone filter ages (time-based - can't measure efficiency)
   const zoneFilters = checkZoneFilters();
   if (zoneFilters.alerts.length > 0) {
     alerts.you.push(...zoneFilters.alerts);
@@ -156,7 +169,7 @@ function runAllChecks() {
   sendAlerts(alerts);
 
   console.log('Check complete:', new Date().toISOString());
-  return { alerts, pressure, aqi, efficiency, zoneFilters, co2, data };
+  return { alerts, pressure, aqi, efficiency, indoorSpike, zoneFilters, co2, data };
 }
 
 // ============================================================================
@@ -297,9 +310,14 @@ function checkEfficiency() {
   const numRows = Math.min(96, lastRow - 1);
   const data = sheet.getRange(lastRow - numRows + 1, 1, numRows, 18).getValues();
 
-  // Only use high-confidence readings (outdoor PM2.5 >= 10 μg/m³)
-  // This is the only reliable way to measure filter performance
-  const reliable = data.filter(r => parseFloat(r[COLS.OUTDOOR_PM25]) >= thresholds.minOutdoorPM);
+  // Only use high-confidence readings:
+  // 1. Outdoor PM2.5 >= threshold (enough pollution to measure)
+  // 2. Indoor PM2.5 <= Outdoor PM2.5 (exclude indoor spikes like cooking)
+  const reliable = data.filter(r => {
+    const outdoor = parseFloat(r[COLS.OUTDOOR_PM25]) || 0;
+    const indoor = parseFloat(r[COLS.INDOOR_PM25]) || 0;
+    return outdoor >= thresholds.minOutdoorPM && indoor <= outdoor;
+  });
 
   if (reliable.length < 5) {
     return { alerts: [], note: 'Outdoor air too clean for reliable measurement' };
@@ -432,6 +450,81 @@ function calibrateEfficiencyThresholds() {
 
   props.setProperty('LAST_CALIBRATION', new Date().toISOString());
   console.log('\nCalibration complete!');
+}
+
+// ============================================================================
+// INDOOR PM SPIKE DETECTION (suggest increasing ERV)
+// ============================================================================
+
+/**
+ * Detect indoor PM spikes (cooking, cleaning, etc.) and suggest ERV boost
+ * Only alerts when outdoor air is clean enough to help
+ */
+function checkIndoorSpike() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME);
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 20) return { alerts: [] };
+
+  const props = PropertiesService.getScriptProperties();
+  const alerts = [];
+
+  // Get last 30 min of data (6 readings at 5-min intervals)
+  const numRows = Math.min(6, lastRow - 1);
+  const data = sheet.getRange(lastRow - numRows + 1, 1, numRows, 18).getValues();
+
+  // Get the most recent reading
+  const latest = data[data.length - 1];
+  const indoor = parseFloat(latest[COLS.INDOOR_PM25]) || 0;
+  const outdoor = parseFloat(latest[COLS.OUTDOOR_PM25]) || 0;
+
+  // Check if this is an indoor spike
+  const spikeAmount = indoor - outdoor;
+  const isSpike = spikeAmount >= CONFIG.INDOOR_SPIKE.threshold;
+  const outdoorClean = outdoor <= CONFIG.INDOOR_SPIKE.maxOutdoorPM;
+
+  if (!isSpike) {
+    // No spike - clear cooldown if spike has ended
+    props.deleteProperty('INDOOR_SPIKE_ALERTED');
+    return { indoor, outdoor, spikeAmount, alerts };
+  }
+
+  // Check cooldown to avoid repeated alerts
+  const lastAlerted = props.getProperty('INDOOR_SPIKE_ALERTED');
+  if (lastAlerted) {
+    const lastAlertTime = new Date(lastAlerted);
+    const minutesSince = (new Date() - lastAlertTime) / (1000 * 60);
+    if (minutesSince < CONFIG.INDOOR_SPIKE.cooldownMinutes) {
+      return { indoor, outdoor, spikeAmount, inCooldown: true, alerts };
+    }
+  }
+
+  // Spike detected - send alert
+  if (outdoorClean) {
+    alerts.push({
+      level: 'INFO',
+      message: `🍳 INDOOR PM SPIKE DETECTED\n\n` +
+               `Indoor: ${indoor.toFixed(1)} μg/m³\n` +
+               `Outdoor: ${outdoor.toFixed(1)} μg/m³\n` +
+               `Spike: +${spikeAmount.toFixed(1)} μg/m³\n\n` +
+               `Likely cause: cooking, cleaning, or candles.\n` +
+               `Outdoor air is clean - consider temporarily setting ERV to HIGH to clear air faster.`
+    });
+  } else {
+    alerts.push({
+      level: 'INFO',
+      message: `🍳 INDOOR PM SPIKE DETECTED\n\n` +
+               `Indoor: ${indoor.toFixed(1)} μg/m³\n` +
+               `Outdoor: ${outdoor.toFixed(1)} μg/m³ (not clean)\n` +
+               `Spike: +${spikeAmount.toFixed(1)} μg/m³\n\n` +
+               `Likely cause: cooking, cleaning, or candles.\n` +
+               `Note: Outdoor air is also elevated (${outdoor.toFixed(1)} μg/m³), so increasing ERV won't help much.\n` +
+               `Consider using a portable air purifier or waiting it out.`
+    });
+  }
+
+  props.setProperty('INDOOR_SPIKE_ALERTED', new Date().toISOString());
+
+  return { indoor, outdoor, spikeAmount, outdoorClean, alerts };
 }
 
 // ============================================================================
@@ -942,6 +1035,7 @@ function setupTriggers() {
   console.log('  LOCATION_TIMEZONE - Timezone');
   console.log('\nFunctions:');
   console.log('  test()                          - Test all checks');
+  console.log('  testIndoorSpike()               - Test indoor spike detection');
   console.log('  calibrateEfficiencyThresholds() - Calibrate from your data');
   console.log('  analyzeFilterReplacements()     - See before/after performance');
 }
@@ -1002,6 +1096,17 @@ function test() {
     console.log(`  ERV state: ${aqi.state || 'NORMAL'}`);
   }
 
+  console.log('\n🍳 Indoor PM Spike:');
+  const indoorSpike = checkIndoorSpike();
+  if (indoorSpike.spikeAmount && indoorSpike.spikeAmount > 0) {
+    console.log(`  Indoor: ${indoorSpike.indoor?.toFixed(1)} μg/m³`);
+    console.log(`  Outdoor: ${indoorSpike.outdoor?.toFixed(1)} μg/m³`);
+    console.log(`  Spike: +${indoorSpike.spikeAmount?.toFixed(1)} μg/m³`);
+    console.log(`  Status: ${indoorSpike.spikeAmount >= CONFIG.INDOOR_SPIKE.threshold ? '⚠️ SPIKE DETECTED' : 'Minor elevation'}`);
+  } else {
+    console.log(`  No spike (indoor <= outdoor)`);
+  }
+
   console.log('\n💨 CO2:');
   const co2 = checkCO2();
   console.log(`  Current: ${co2.current?.toFixed(0) || 'N/A'} ppm`);
@@ -1019,6 +1124,7 @@ function getStatus() {
   const pressure = checkPressure();
   const aqi = checkOutdoorAQI();
   const efficiency = checkEfficiency();
+  const indoorSpike = checkIndoorSpike();
 
   return {
     timestamp: new Date().toISOString(),
@@ -1029,9 +1135,66 @@ function getStatus() {
       ? `${efficiency.medianEfficiency.toFixed(0)}% (${efficiency.medianEfficiency >= 75 ? 'good' : 'CHANGE FILTER'})`
       : 'insufficient data',
 
+    // Indoor spike status
+    indoorSpike: indoorSpike.spikeAmount > 0
+      ? `+${indoorSpike.spikeAmount.toFixed(1)} μg/m³ (indoor: ${indoorSpike.indoor?.toFixed(1)}, outdoor: ${indoorSpike.outdoor?.toFixed(1)})`
+      : 'none',
+
     // For wife
     pressure: pressure.current ? `${pressure.current.toFixed(0)} hPa` : 'N/A',
     outdoorPM25: aqi.current ? `${aqi.current.toFixed(1)} μg/m³` : 'N/A',
     ervState: aqi.state || 'NORMAL',
   };
+}
+
+/**
+ * Test indoor spike detection
+ * Run this to see current indoor/outdoor PM levels and spike status
+ */
+function testIndoorSpike() {
+  console.log('═'.repeat(60));
+  console.log('INDOOR SPIKE DETECTION TEST');
+  console.log('═'.repeat(60));
+
+  // Clear cooldown for testing
+  const props = PropertiesService.getScriptProperties();
+  const hadCooldown = props.getProperty('INDOOR_SPIKE_ALERTED');
+  if (hadCooldown) {
+    console.log(`\nNote: Clearing previous cooldown from ${hadCooldown}`);
+    props.deleteProperty('INDOOR_SPIKE_ALERTED');
+  }
+
+  const result = checkIndoorSpike();
+
+  console.log('\n📊 Current Readings:');
+  console.log(`  Indoor PM2.5:  ${result.indoor?.toFixed(1) || 'N/A'} μg/m³`);
+  console.log(`  Outdoor PM2.5: ${result.outdoor?.toFixed(1) || 'N/A'} μg/m³`);
+  console.log(`  Difference:    ${result.spikeAmount?.toFixed(1) || 'N/A'} μg/m³`);
+
+  console.log('\n⚙️ Thresholds:');
+  console.log(`  Spike threshold:   ${CONFIG.INDOOR_SPIKE.threshold} μg/m³ (indoor must exceed outdoor by this)`);
+  console.log(`  Max outdoor for ERV: ${CONFIG.INDOOR_SPIKE.maxOutdoorPM} μg/m³`);
+  console.log(`  Cooldown:          ${CONFIG.INDOOR_SPIKE.cooldownMinutes} minutes`);
+
+  const isSpike = (result.spikeAmount || 0) >= CONFIG.INDOOR_SPIKE.threshold;
+  console.log('\n🔍 Analysis:');
+  console.log(`  Is spike: ${isSpike ? 'YES' : 'NO'}`);
+  if (isSpike) {
+    console.log(`  Outdoor clean: ${result.outdoorClean ? 'YES - ERV will help' : 'NO - ERV won\'t help much'}`);
+  }
+
+  console.log('\n📧 Alerts generated:', result.alerts.length);
+  result.alerts.forEach(a => {
+    console.log('\n' + '─'.repeat(50));
+    console.log(a.message);
+  });
+
+  // Restore cooldown if it was set
+  if (hadCooldown) {
+    props.setProperty('INDOOR_SPIKE_ALERTED', hadCooldown);
+    console.log(`\nNote: Restored cooldown to ${hadCooldown}`);
+  }
+
+  console.log('\n' + '═'.repeat(60));
+  return result;
 }
