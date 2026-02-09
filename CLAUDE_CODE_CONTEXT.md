@@ -10,7 +10,7 @@ Transform this data collection project into a family health dashboard that any f
 
 My mother lived next to a freeway for 20 years. The constant coughing. The asthma. The cancer. Her early passing at 67.
 
-My wife has asthma. My son was sick every 45 days. After installing ERV + MERV15 + heat pump and monitoring air quality:
+My wife has asthma. My son was sick every 45 days. After installing ERV + MERV 13 + heat pump and monitoring air quality:
 - CO2 in son's bedroom: 1000+ ppm → 600 ppm
 - Son's sickness: every 45 days → healthy all fall/winter 2025
 - Wife's asthma triggers: reduced
@@ -22,7 +22,7 @@ The research is clear: CO2 above 1000 ppm reduces children's cognitive performan
 ### What Works
 - **Sensors**: Airthings (indoor) + AirGradient (outdoor + second room)
 - **Collection**: Python scripts on DGX Spark, systemd timers, 5-minute intervals
-- **Storage**: Google Sheets (82,791+ readings)
+- **Storage**: Google Sheets (93,556+ readings)
 - **Alerting**: Google Apps Script (HVACMonitor_v3.gs)
   - Efficiency-based filter alerts (not time-based)
   - Seasonal calibration
@@ -72,7 +72,7 @@ Sensors → Python (DGX Spark) → Google Sheets → Apps Script
 
 ## Key Data Findings (93,556 readings)
 
-1. **Filter Life**: MERV 13 maintains >85% efficiency for 120+ days (manufacturer says 45)
+1. **Filter Life**: ERV MERV 13 lasted 151 days (manufacturer says 90)
 2. **Load-based prediction FAILED**: Filter at 197% of "max life" still performed at 87.3%
 3. **Efficiency-based alerts WORK**: Measure actual performance, not theoretical decay
 4. **Seasonal calibration needed**: Winter/summer have different outdoor PM2.5 baselines

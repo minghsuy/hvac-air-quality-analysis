@@ -135,7 +135,7 @@ Data is being collected but no email alerts are received.
    - Open Google Sheets
    - Extensions → Apps Script
    - Project Settings → Script Properties
-   - Ensure `EMAIL_RECIPIENT` is set correctly
+   - Ensure `ALERT_EMAIL` and `ALERT_EMAIL_2` are set correctly
 
 2. **Review Execution Logs**
    - In Apps Script editor
@@ -144,16 +144,15 @@ Data is being collected but no email alerts are received.
 
 3. **Test Alert Function**
    ```javascript
-   // In Apps Script editor, run this test
-   function testAlert() {
-     analyzeEfficiency();
-   }
+   // In Apps Script editor, run the built-in test function
+   test();
    ```
 
-4. **Verify Confidence Thresholds**
-   - v0.4.0 uses smart alerting
-   - Alerts suppressed during activity hours (5-11 PM) for low confidence
-   - Check outdoor PM2.5 is >10 for high confidence alerts
+4. **Verify Efficiency Thresholds**
+   - HVACMonitor v3 uses efficiency-based alerting with seasonal calibration
+   - Change filter alert at < 75% efficiency (or calibrated value)
+   - Critical alert at < 65% efficiency (or calibrated value)
+   - Only reliable when outdoor PM2.5 exceeds seasonal minimum (winter: 10, summer: 5)
 
 ### 🔴 Schema Mismatch Errors
 
@@ -232,12 +231,13 @@ Efficiency calculation shows -50% or other negative values.
 Getting alerts during cooking or cleaning activities.
 
 #### Solution
-The v0.4.0 smart alerting system should handle this:
-- Uses median instead of average
-- Suppresses low-confidence alerts during activity hours (5-11 PM)
-- Requires high outdoor PM2.5 for confident readings
+HVACMonitor v3 handles this with multiple mechanisms:
+- Uses **median** (not average) of efficiency readings — resists outliers
+- **Indoor PM spike detection** identifies cooking/cleaning events (indoor exceeds outdoor by >= 5 ug/m3)
+- Efficiency calculation **filters out** readings where indoor > outdoor
+- Requires outdoor PM2.5 above **seasonal minimum** (winter: 10, summer: 5) for reliable readings
 
-Update to latest Apps Script code if still experiencing issues.
+Update to latest `HVACMonitor_v3.gs` if still experiencing issues.
 
 ## Diagnostic Commands
 
@@ -259,8 +259,8 @@ python -c "from collect_with_sheets_api_v2 import get_airthings_data; print(get_
 # Test AirGradient outdoor
 curl -s http://192.168.X.XX/measures/current | jq .
 
-# Test Google Sheets write
-python collect_with_sheets_api_v2.py --dry-run
+# Test full collection (verbose output)
+python collect_with_sheets_api_v2.py --test
 ```
 
 ### Finding Device IPs
@@ -277,10 +277,8 @@ nmap -sn 192.168.X.0/24 | grep -B2 -i "d8:3b:da"
 
 ### Reset and Restart
 ```bash
-# Clear logs and restart
-rm /data/logs/air_quality.log
-rm /data/logs/air_quality_data.jsonl
-./run_collector.sh
+# Restart the systemd timer
+systemctl --user restart air-quality-collector.timer
 
 # Rebuild from scratch
 rm -rf .venv
@@ -290,22 +288,25 @@ uv sync --dev
 
 ## Log Files Location
 
-| Log File | Purpose | Location |
-|----------|---------|----------|
-| Application Log | Main collector output | `/data/logs/air_quality.log` |
-| Data Log | JSON records of all readings | `/data/logs/air_quality_data.jsonl` |
-| Cron Log | Cron execution history | `/data/logs/cron.log` |
-| Collection Log | Legacy collection output | `/data/logs/collection.log` |
+The collector runs as a systemd user service. Logs are in the systemd journal:
+
+```bash
+# View recent collector logs
+journalctl --user -u air-quality-collector.service --since "1 hour ago"
+
+# View all errors
+journalctl --user -u air-quality-collector.service --priority=err
+
+# Follow logs in real time
+journalctl --user -u air-quality-collector.service -f
+```
 
 ## Getting Help
 
 1. **Check Logs First**
    ```bash
    # Most recent errors
-   grep ERROR /data/logs/air_quality.log | tail -20
-   
-   # Check data format
-   tail -1 /data/logs/air_quality_data.jsonl | python -m json.tool
+   journalctl --user -u air-quality-collector.service --since "1 hour ago" --no-pager
    ```
 
 2. **Enable Debug Mode**
@@ -345,13 +346,12 @@ A successful collection run should look like:
 
 ```bash
 $ python collect_with_sheets_api_v2.py
-2025-09-01 10:00:00 - Starting collection...
-2025-09-01 10:00:01 - Airthings data: PM2.5=0.0, CO2=427, Temp=20.6°C
-2025-09-01 10:00:02 - AirGradient outdoor: PM2.5=8.73, CO2=420, Temp=25.2°C
-2025-09-01 10:00:02 - AirGradient indoor: PM2.5=1.2, CO2=445, Temp=21.3°C
-2025-09-01 10:00:03 - Filter efficiency: Master=100.0%, Second=86.2%
-2025-09-01 10:00:04 - Data written to Google Sheets (2 rows)
-2025-09-01 10:00:04 - Collection complete
+✓ Connected to Google Sheets API
+✓ Outdoor: PM2.5=10 μg/m³
+✓ Master bedroom: PM2.5=2 μg/m³, Efficiency=80%
+✓ Second bedroom: PM2.5=1 μg/m³, Efficiency=90%
+✓ Attic: Temp=22.3°C, Humidity=35%
+✅ Successfully sent 3 rows to Cleaned_Data_20250831
 ```
 
 If you see this, everything is working correctly!
