@@ -66,11 +66,11 @@ Sensors → Python (DGX Spark) → Google Sheets → Apps Script
 | Component | Model | Purpose |
 |-----------|-------|---------|
 | ERV | Carrier ERVXXLHB | Fresh air + CO2 reduction (horizontal, attic-installed) |
-| Main Filter | Carrier MERV 15 + Plasma | PM2.5 filtration + pathogen killing |
+| Main Filter | MERV 13 | PM2.5 filtration |
 | Heat Pump | [model] | Gentle heating/cooling, no dry air |
 | Zone Filters | 12x12x1 | Individual room blower protection |
 
-## Key Data Findings (82,791 readings)
+## Key Data Findings (93,556 readings)
 
 1. **Filter Life**: MERV 13 maintains >85% efficiency for 120+ days (manufacturer says 45)
 2. **Load-based prediction FAILED**: Filter at 197% of "max life" still performed at 87.3%
