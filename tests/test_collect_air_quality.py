@@ -211,6 +211,116 @@ class TestGoogleSheetsIntegration:
         assert result is True
 
 
+class TestTempStickAPI:
+    """Test Temp Stick WiFi sensor integration"""
+
+    @patch("requests.get")
+    def test_get_tempstick_data_success(self, mock_get):
+        """Test successful data retrieval from Temp Stick"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": {
+                "sensor_id": "TS00XXTST1",
+                "sensor_name": "Attic",
+                "last_temp": 95.0,
+                "last_humidity": 35.0,
+                "battery_pct": 98.5,
+                "offline": False,
+            }
+        }
+        mock_get.return_value = mock_response
+
+        with (
+            patch.object(collector, "TEMP_STICK_API_KEY", "test_key"),
+            patch.object(collector, "TEMP_STICK_SENSOR_ID", "TS00XXTST1"),
+        ):
+            data = collector.get_tempstick_data()
+
+        assert data is not None
+        assert data["room"] == "attic"
+        assert data["sensor_type"] == "tempstick"
+        assert data["sensor_id"] == "tempstick_TST1"
+        assert data["humidity"] == 35.0
+
+    @patch("requests.get")
+    def test_tempstick_fahrenheit_to_celsius(self, mock_get):
+        """Test that Temp Stick °F is converted to °C"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": {
+                "last_temp": 212.0,  # Boiling point °F
+                "last_humidity": 50.0,
+            }
+        }
+        mock_get.return_value = mock_response
+
+        with (
+            patch.object(collector, "TEMP_STICK_API_KEY", "test_key"),
+            patch.object(collector, "TEMP_STICK_SENSOR_ID", "TS00TEST01"),
+        ):
+            data = collector.get_tempstick_data()
+
+        assert data is not None
+        assert data["temp"] == 100.0  # 212°F = 100°C
+
+    @patch("requests.get")
+    def test_tempstick_freezing_conversion(self, mock_get):
+        """Test °F → °C at freezing point"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"data": {"last_temp": 32.0, "last_humidity": 80.0}}
+        mock_get.return_value = mock_response
+
+        with (
+            patch.object(collector, "TEMP_STICK_API_KEY", "test_key"),
+            patch.object(collector, "TEMP_STICK_SENSOR_ID", "TS00TEST01"),
+        ):
+            data = collector.get_tempstick_data()
+
+        assert data is not None
+        assert data["temp"] == 0.0  # 32°F = 0°C
+
+    @patch("requests.get")
+    def test_tempstick_api_failure(self, mock_get):
+        """Test graceful failure when Temp Stick API is unreachable"""
+        mock_get.side_effect = Exception("Connection timeout")
+
+        with (
+            patch.object(collector, "TEMP_STICK_API_KEY", "test_key"),
+            patch.object(collector, "TEMP_STICK_SENSOR_ID", "TS00TEST01"),
+        ):
+            data = collector.get_tempstick_data()
+
+        assert data is None
+
+    @patch("requests.get")
+    def test_tempstick_api_error_status(self, mock_get):
+        """Test graceful failure on non-200 status"""
+        mock_response = MagicMock()
+        mock_response.status_code = 401
+        mock_get.return_value = mock_response
+
+        with (
+            patch.object(collector, "TEMP_STICK_API_KEY", "test_key"),
+            patch.object(collector, "TEMP_STICK_SENSOR_ID", "TS00TEST01"),
+        ):
+            data = collector.get_tempstick_data()
+
+        assert data is None
+
+    def test_tempstick_skipped_without_config(self):
+        """Test that Temp Stick is silently skipped when not configured"""
+        with (
+            patch.object(collector, "TEMP_STICK_API_KEY", ""),
+            patch.object(collector, "TEMP_STICK_SENSOR_ID", ""),
+        ):
+            data = collector.get_tempstick_data()
+
+        assert data is None
+
+
 class TestEfficiencyEdgeCases:
     """Test edge cases in efficiency calculation"""
 

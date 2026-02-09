@@ -2,23 +2,15 @@
 
 **PURPOSE:** Prevent common mistakes when working with this codebase. Read this FIRST.
 
-## 🚨 CRITICAL: Git Workflow (Feature Branch + PR)
+## 📖 Project Context Files
 
-**NEVER push directly to main.** Always use feature branches and PRs.
+| File | Purpose |
+|------|--------|
+| `CLAUDE_CODE_CONTEXT.md` | **Read this for project vision, architecture, and constraints** |
+| `BACKLOG.md` | Prioritized task list (P0 = before March LinkedIn post) |
+| `wiki-repo/Why-This-Project-Matters.md` | Personal story - the "why" |
 
-```bash
-# 1. Create feature branch
-git checkout -b feat/your-feature-name
-
-# 2. Make changes and commit
-# Use /push-changes skill (enforces conventional commits)
-
-# 3. Create PR
-gh pr create
-
-# 4. After review/merge, clean up
-git checkout main && git pull && git branch -d feat/your-feature-name
-```
+**TL;DR Vision**: Transform this into a family health dashboard. North star = one family's kid gets sick less.
 
 ### Available Skills (user-level)
 | Skill | Purpose |
@@ -58,21 +50,6 @@ git commit -m "chore: bump version to X.Y.Z+1-dev"
 git push
 ```
 
-## ⚠️ Package Management: Use UV, NOT pip!
-
-```bash
-# CORRECT ✅
-uv sync                   # Install dependencies
-uv add package-name       # Add new package
-uv run pytest            # Run with uv environment
-uv run ruff format .     # Format code
-
-# WRONG ❌ - NEVER DO THIS:
-pip install anything     # NO!
-pip freeze > requirements.txt  # NO!
-python -m pip install    # NO!
-```
-
 ## ⚠️ This is NOT a Python Package!
 
 - **Flat structure required** - scripts stay in root directory, NOT src/
@@ -105,23 +82,6 @@ grep -r "GOOGLE_SPREADSHEET_ID.*=" . --exclude-dir=.git --exclude-dir=.venv
 - `XXXXXX` for serials/MACs
 - `your_value_here` for credentials
 - Use environment variables for IDs
-
-## ⚠️ Wiki Repository Management
-
-**GitHub Wiki = SEPARATE Git Repository!**
-
-```bash
-# CORRECT ✅
-git clone https://github.com/username/project.wiki.git wiki-repo
-cd wiki-repo
-git add/commit/push  # Manage separately
-
-# WRONG ❌ - DISASTER:
-git add wiki-repo    # NO! Embedding git repo
-git rm --cached wiki-repo  # NO! Can delete work
-```
-
-**Always:** Keep `wiki-repo/` in .gitignore
 
 ## 📋 Essential Commands
 

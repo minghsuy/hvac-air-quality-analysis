@@ -56,6 +56,29 @@
 }
 ```
 
+### Temp Stick API Response
+```json
+{
+  "data": {
+    "sensor_id": "TS00XXXXXX",
+    "sensor_name": "Attic",
+    "last_temp": 95.2,            // °F → converted to °C at collection
+    "last_humidity": 35.0,        // → Indoor_Humidity
+    "battery_pct": 98.5,
+    "offline": false
+  }
+}
+```
+
+**Attic sensor notes:**
+- Room: `attic` (near ERV/air handler)
+- Only populates Indoor_Temp (col K) and Indoor_Humidity (col L)
+- All other data fields = empty string `""`
+- No filter efficiency calculation (no PM2.5 data)
+- Battery-powered, reports every ~15-30 minutes (vs 5 min for other sensors)
+- Some 5-minute collection polls may return the same reading (acceptable, not duplicated)
+- Temperature converted from °F → °C at collection time
+
 ## Data Type Rules
 
 1. **Numeric fields**: Store as numbers (not strings) for calculations
@@ -75,6 +98,7 @@
 |--------|---------------|--------|
 | Airthings | Indoor_NOX | Sensor not present |
 | AirGradient | Indoor_Radon | Sensor not present |
+| Temp Stick | All except Indoor_Temp, Indoor_Humidity | Temp/humidity only sensor |
 | All | Any field | Sensor offline/error → empty string |
 
 ## Filter Efficiency Calculation
