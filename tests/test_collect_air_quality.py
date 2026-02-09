@@ -211,6 +211,117 @@ class TestGoogleSheetsIntegration:
         assert result is True
 
 
+class TestTempStickAPI:
+    """Test Temp Stick WiFi sensor integration"""
+
+    @patch("requests.get")
+    def test_get_tempstick_data_success(self, mock_get):
+        """Test successful data retrieval from Temp Stick"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": {
+                "sensor_id": "TS00XXTST1",
+                "sensor_name": "Attic",
+                "last_temp": 20.52,
+                "last_humidity": 50.8,
+                "battery_pct": 98.5,
+                "offline": False,
+            }
+        }
+        mock_get.return_value = mock_response
+
+        with (
+            patch.object(collector, "TEMP_STICK_API_KEY", "test_key"),
+            patch.object(collector, "TEMP_STICK_SENSOR_ID", "TS00XXTST1"),
+        ):
+            data = collector.get_tempstick_data()
+
+        assert data is not None
+        assert data["room"] == "attic"
+        assert data["sensor_type"] == "tempstick"
+        assert data["sensor_id"] == "tempstick_TST1"
+        assert data["temp"] == 20.52  # API returns °C directly
+        assert data["humidity"] == 50.8
+
+    @patch("requests.get")
+    def test_tempstick_temp_rounding(self, mock_get):
+        """Test that Temp Stick temperature is rounded to 2 decimal places"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": {
+                "last_temp": 35.456789,
+                "last_humidity": 50.0,
+            }
+        }
+        mock_get.return_value = mock_response
+
+        with (
+            patch.object(collector, "TEMP_STICK_API_KEY", "test_key"),
+            patch.object(collector, "TEMP_STICK_SENSOR_ID", "TS00TEST01"),
+        ):
+            data = collector.get_tempstick_data()
+
+        assert data is not None
+        assert data["temp"] == 35.46  # Rounded to 2 decimal places
+
+    @patch("requests.get")
+    def test_tempstick_null_temp(self, mock_get):
+        """Test that null temperature from API returns empty string"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"data": {"last_temp": None, "last_humidity": 80.0}}
+        mock_get.return_value = mock_response
+
+        with (
+            patch.object(collector, "TEMP_STICK_API_KEY", "test_key"),
+            patch.object(collector, "TEMP_STICK_SENSOR_ID", "TS00TEST01"),
+        ):
+            data = collector.get_tempstick_data()
+
+        assert data is not None
+        assert data["temp"] == ""  # None → empty string per schema rules
+
+    @patch("requests.get")
+    def test_tempstick_api_failure(self, mock_get):
+        """Test graceful failure when Temp Stick API is unreachable"""
+        mock_get.side_effect = Exception("Connection timeout")
+
+        with (
+            patch.object(collector, "TEMP_STICK_API_KEY", "test_key"),
+            patch.object(collector, "TEMP_STICK_SENSOR_ID", "TS00TEST01"),
+        ):
+            data = collector.get_tempstick_data()
+
+        assert data is None
+
+    @patch("requests.get")
+    def test_tempstick_api_error_status(self, mock_get):
+        """Test graceful failure on non-200 status"""
+        mock_response = MagicMock()
+        mock_response.status_code = 401
+        mock_get.return_value = mock_response
+
+        with (
+            patch.object(collector, "TEMP_STICK_API_KEY", "test_key"),
+            patch.object(collector, "TEMP_STICK_SENSOR_ID", "TS00TEST01"),
+        ):
+            data = collector.get_tempstick_data()
+
+        assert data is None
+
+    def test_tempstick_skipped_without_config(self):
+        """Test that Temp Stick is silently skipped when not configured"""
+        with (
+            patch.object(collector, "TEMP_STICK_API_KEY", ""),
+            patch.object(collector, "TEMP_STICK_SENSOR_ID", ""),
+        ):
+            data = collector.get_tempstick_data()
+
+        assert data is None
+
+
 class TestEfficiencyEdgeCases:
     """Test edge cases in efficiency calculation"""
 

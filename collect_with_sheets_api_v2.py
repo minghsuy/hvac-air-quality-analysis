@@ -24,6 +24,10 @@ AIRTHINGS_DEVICE_SERIAL = os.environ.get("AIRTHINGS_DEVICE_SERIAL", "")
 AIRGRADIENT_OUTDOOR_SERIAL = os.environ.get("AIRGRADIENT_SERIAL", "")
 AIRGRADIENT_INDOOR_SERIAL = os.environ.get("AIRGRADIENT_INDOOR_SERIAL", "")
 
+# Temp Stick WiFi sensor (attic)
+TEMP_STICK_API_KEY = os.environ.get("TEMP_STICK_API_KEY", "")
+TEMP_STICK_SENSOR_ID = os.environ.get("TEMP_STICK_SENSOR_ID", "")
+
 # Local network - use actual IPs from environment or config
 OUTDOOR_IP = os.environ.get("AIRGRADIENT_OUTDOOR_IP", "192.168.X.XX")
 INDOOR_IP = os.environ.get("AIRGRADIENT_INDOOR_IP", "192.168.X.XX")
@@ -303,12 +307,99 @@ def get_airgradient_data(serial, room, ip=None):
         return None
 
 
+def get_tempstick_data():
+    """Get temperature/humidity data from Temp Stick WiFi sensor in attic"""
+    if not TEMP_STICK_API_KEY or not TEMP_STICK_SENSOR_ID:
+        return None
+
+    try:
+        response = requests.get(
+            f"https://tempstickapi.com/api/v1/sensor/{TEMP_STICK_SENSOR_ID}",
+            headers={"X-API-KEY": TEMP_STICK_API_KEY},
+            timeout=10,
+        )
+
+        if response.status_code != 200:
+            print(f"  ⚠️ Temp Stick API returned status {response.status_code}")
+            return None
+
+        data = response.json().get("data", {})
+
+        # Temp Stick API returns °C (dashboard displays °F but API is metric)
+        temp_c = data.get("last_temp")
+        if temp_c is not None:
+            temp_c = round(temp_c, 2)
+        else:
+            temp_c = ""
+
+        humidity = data.get("last_humidity", "")
+
+        return {
+            "sensor_id": f"tempstick_{TEMP_STICK_SENSOR_ID[-4:]}",
+            "room": "attic",
+            "sensor_type": "tempstick",
+            "temp": temp_c,
+            "humidity": humidity,
+        }
+    except Exception as e:
+        print(f"Temp Stick API error: {e}")
+        return None
+
+
 def calculate_efficiency(indoor_pm25, outdoor_pm25):
     """Calculate filter efficiency percentage"""
     if outdoor_pm25 <= 0:
         return 100.0 if indoor_pm25 <= 0 else 0.0
     efficiency = ((outdoor_pm25 - indoor_pm25) / outdoor_pm25) * 100
     return round(max(0, min(100, efficiency)), 2)
+
+
+def build_air_quality_row(timestamp, sensor, outdoor, efficiency):
+    """Build a sheet row for an air quality sensor with PM2.5 and outdoor data"""
+    return [
+        timestamp,
+        sensor["sensor_id"],
+        sensor["room"],
+        sensor["sensor_type"],
+        sensor["pm25"],
+        outdoor["pm25"],
+        efficiency,
+        sensor["co2"],
+        sensor["voc"],
+        sensor["nox"],
+        sensor["temp"],
+        sensor["humidity"],
+        sensor["radon"],
+        outdoor["co2"],
+        outdoor["temp"],
+        outdoor["humidity"],
+        outdoor["voc"],
+        outdoor["nox"],
+    ]
+
+
+def build_temp_only_row(timestamp, sensor):
+    """Build a sheet row for a temp/humidity-only sensor (empty air quality fields)"""
+    return [
+        timestamp,
+        sensor["sensor_id"],
+        sensor["room"],
+        sensor["sensor_type"],
+        "",  # Indoor_PM25
+        "",  # Outdoor_PM25
+        "",  # Filter_Efficiency
+        "",  # Indoor_CO2
+        "",  # Indoor_VOC
+        "",  # Indoor_NOX
+        sensor["temp"],
+        sensor["humidity"],
+        "",  # Indoor_Radon
+        "",  # Outdoor_CO2
+        "",  # Outdoor_Temp
+        "",  # Outdoor_Humidity
+        "",  # Outdoor_VOC
+        "",  # Outdoor_NOX
+    ]
 
 
 def test_local():
@@ -377,28 +468,7 @@ def test_local():
         efficiency = calculate_efficiency(master["pm25"], outdoor_pm25)
         print(f"  ✓ Master PM2.5: {master['pm25']} μg/m³")
         print(f"  ✓ Filter Efficiency: {efficiency}%")
-
-        row = [
-            timestamp,
-            master["sensor_id"],
-            master["room"],
-            master["sensor_type"],
-            master["pm25"],
-            outdoor_pm25,
-            efficiency,
-            master["co2"],
-            master["voc"],
-            master["nox"],
-            master["temp"],
-            master["humidity"],
-            master["radon"],
-            outdoor["co2"],
-            outdoor["temp"],
-            outdoor["humidity"],
-            outdoor["voc"],
-            outdoor["nox"],
-        ]
-        test_rows.append(row)
+        test_rows.append(build_air_quality_row(timestamp, master, outdoor, efficiency))
     else:
         print("  ⚠️ No Airthings data available")
 
@@ -410,30 +480,19 @@ def test_local():
             efficiency = calculate_efficiency(second["pm25"], outdoor_pm25)
             print(f"  ✓ Second bedroom PM2.5: {second['pm25']} μg/m³")
             print(f"  ✓ Filter Efficiency: {efficiency}%")
-
-            row = [
-                timestamp,
-                second["sensor_id"],
-                second["room"],
-                second["sensor_type"],
-                second["pm25"],
-                outdoor_pm25,
-                efficiency,
-                second["co2"],
-                second["voc"],
-                second["nox"],
-                second["temp"],
-                second["humidity"],
-                second["radon"],
-                outdoor["co2"],
-                outdoor["temp"],
-                outdoor["humidity"],
-                outdoor["voc"],
-                outdoor["nox"],
-            ]
-            test_rows.append(row)
+            test_rows.append(build_air_quality_row(timestamp, second, outdoor, efficiency))
         else:
             print("  ⚠️ No second bedroom data available")
+
+    # Collect attic data (Temp Stick)
+    print("\n🌡️ Collecting attic data...")
+    attic = get_tempstick_data()
+    if attic:
+        print(f"  ✓ Attic Temp: {attic['temp']}°C")
+        print(f"  ✓ Attic Humidity: {attic['humidity']}%")
+        test_rows.append(build_temp_only_row(timestamp, attic))
+    else:
+        print("  ⚠️ No attic data available (Temp Stick not configured or unreachable)")
 
     # Send test data to Google Sheets
     if test_rows:
@@ -485,28 +544,7 @@ def main():
     if master:
         efficiency = calculate_efficiency(master["pm25"], outdoor_pm25)
         print(f"✓ Master bedroom: PM2.5={master['pm25']} μg/m³, Efficiency={efficiency}%")
-
-        row = [
-            timestamp,
-            master["sensor_id"],
-            master["room"],
-            master["sensor_type"],
-            master["pm25"],
-            outdoor_pm25,
-            efficiency,
-            master["co2"],
-            master["voc"],
-            master["nox"],
-            master["temp"],
-            master["humidity"],
-            master["radon"],
-            outdoor["co2"],
-            outdoor["temp"],
-            outdoor["humidity"],
-            outdoor["voc"],
-            outdoor["nox"],
-        ]
-        rows_to_append.append(row)
+        rows_to_append.append(build_air_quality_row(timestamp, master, outdoor, efficiency))
 
     # Second bedroom (AirGradient)
     if AIRGRADIENT_INDOOR_SERIAL:
@@ -514,28 +552,13 @@ def main():
         if second:
             efficiency = calculate_efficiency(second["pm25"], outdoor_pm25)
             print(f"✓ Second bedroom: PM2.5={second['pm25']} μg/m³, Efficiency={efficiency}%")
+            rows_to_append.append(build_air_quality_row(timestamp, second, outdoor, efficiency))
 
-            row = [
-                timestamp,
-                second["sensor_id"],
-                second["room"],
-                second["sensor_type"],
-                second["pm25"],
-                outdoor_pm25,
-                efficiency,
-                second["co2"],
-                second["voc"],
-                second["nox"],
-                second["temp"],
-                second["humidity"],
-                second["radon"],
-                outdoor["co2"],
-                outdoor["temp"],
-                outdoor["humidity"],
-                outdoor["voc"],
-                outdoor["nox"],
-            ]
-            rows_to_append.append(row)
+    # Attic (Temp Stick) - temp/humidity only
+    attic = get_tempstick_data()
+    if attic:
+        print(f"✓ Attic: Temp={attic['temp']}°C, Humidity={attic['humidity']}%")
+        rows_to_append.append(build_temp_only_row(timestamp, attic))
 
     # Send all rows to Google Sheets
     success_count = 0
