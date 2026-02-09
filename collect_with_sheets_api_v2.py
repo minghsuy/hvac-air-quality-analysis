@@ -325,10 +325,10 @@ def get_tempstick_data():
 
         data = response.json().get("data", {})
 
-        # Temp Stick returns °F - convert to °C for schema consistency
-        temp_f = data.get("last_temp")
-        if temp_f is not None:
-            temp_c = round((temp_f - 32) * 5 / 9, 2)
+        # Temp Stick API returns °C (dashboard displays °F but API is metric)
+        temp_c = data.get("last_temp")
+        if temp_c is not None:
+            temp_c = round(temp_c, 2)
         else:
             temp_c = ""
 

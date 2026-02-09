@@ -223,8 +223,8 @@ class TestTempStickAPI:
             "data": {
                 "sensor_id": "TS00XXTST1",
                 "sensor_name": "Attic",
-                "last_temp": 95.0,
-                "last_humidity": 35.0,
+                "last_temp": 20.52,
+                "last_humidity": 50.8,
                 "battery_pct": 98.5,
                 "offline": False,
             }
@@ -241,16 +241,17 @@ class TestTempStickAPI:
         assert data["room"] == "attic"
         assert data["sensor_type"] == "tempstick"
         assert data["sensor_id"] == "tempstick_TST1"
-        assert data["humidity"] == 35.0
+        assert data["temp"] == 20.52  # API returns °C directly
+        assert data["humidity"] == 50.8
 
     @patch("requests.get")
-    def test_tempstick_fahrenheit_to_celsius(self, mock_get):
-        """Test that Temp Stick °F is converted to °C"""
+    def test_tempstick_temp_rounding(self, mock_get):
+        """Test that Temp Stick temperature is rounded to 2 decimal places"""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "data": {
-                "last_temp": 212.0,  # Boiling point °F
+                "last_temp": 35.456789,
                 "last_humidity": 50.0,
             }
         }
@@ -263,14 +264,14 @@ class TestTempStickAPI:
             data = collector.get_tempstick_data()
 
         assert data is not None
-        assert data["temp"] == 100.0  # 212°F = 100°C
+        assert data["temp"] == 35.46  # Rounded to 2 decimal places
 
     @patch("requests.get")
-    def test_tempstick_freezing_conversion(self, mock_get):
-        """Test °F → °C at freezing point"""
+    def test_tempstick_null_temp(self, mock_get):
+        """Test that null temperature from API returns empty string"""
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"data": {"last_temp": 32.0, "last_humidity": 80.0}}
+        mock_response.json.return_value = {"data": {"last_temp": None, "last_humidity": 80.0}}
         mock_get.return_value = mock_response
 
         with (
@@ -280,7 +281,7 @@ class TestTempStickAPI:
             data = collector.get_tempstick_data()
 
         assert data is not None
-        assert data["temp"] == 0.0  # 32°F = 0°C
+        assert data["temp"] == ""  # None → empty string per schema rules
 
     @patch("requests.get")
     def test_tempstick_api_failure(self, mock_get):

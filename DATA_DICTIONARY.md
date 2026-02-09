@@ -62,7 +62,7 @@
   "data": {
     "sensor_id": "TS00XXXXXX",
     "sensor_name": "Attic",
-    "last_temp": 95.2,            // °F → converted to °C at collection
+    "last_temp": 20.52,           // °C (API returns metric; dashboard shows °F)
     "last_humidity": 35.0,        // → Indoor_Humidity
     "battery_pct": 98.5,
     "offline": false
@@ -77,7 +77,7 @@
 - No filter efficiency calculation (no PM2.5 data)
 - Battery-powered, reports every ~15-30 minutes (vs 5 min for other sensors)
 - Some 5-minute collection polls may return the same reading (acceptable, not duplicated)
-- Temperature converted from °F → °C at collection time
+- API returns °C natively (dashboard displays °F but API is metric)
 
 ## Data Type Rules
 
