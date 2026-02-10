@@ -194,7 +194,7 @@ def generate_report(df):
 
     # Cost analysis
     print("\n=== Cost Analysis ===")
-    hvac_filter_cost = 130  # MERV 15
+    hvac_filter_cost = 130  # MERV 13
     erv_filter_cost = 50  # MERV 13
 
     days_since_last_change = (datetime.now() - pd.to_datetime(FILTER_UPGRADE)).days

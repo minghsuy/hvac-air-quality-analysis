@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Temp Stick WiFi sensor integration for attic temperature/humidity monitoring
+- `get_tempstick_data()` with graceful failure (optional sensor, silently skipped if not configured)
+- `build_air_quality_row()` and `build_temp_only_row()` helpers to eliminate row construction duplication
+- Project context files: `CLAUDE_CODE_CONTEXT.md` (vision/architecture) and `BACKLOG.md` (prioritized tasks)
+- `.env.example` template for all environment variables
+- 6 new tests for Temp Stick API integration (22 total)
+
+### Changed
+- Fixed ERV model in docs: Panasonic FV-04VE1 → Carrier ERVXXLHB (horizontal, attic-installed)
+- Deduplicated `CLAUDE.md` by removing rules inherited from global config
+
+### Fixed
+- Temp Stick API returns °C natively (not °F as initially assumed) — removed incorrect double conversion
+
 ## [0.5.0] - 2026-01-17
 
 ### Added

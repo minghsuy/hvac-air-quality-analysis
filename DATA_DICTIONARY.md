@@ -111,12 +111,11 @@ else:
     efficiency = max(0, min(100, efficiency))  # Clamp 0-100%
 ```
 
-## Alert Thresholds
+## Alert Thresholds (HVACMonitor v3)
 
 ### Filter Efficiency
-- **< 85%**: Warning - Monitor closely
-- **< 80%**: Critical - Plan replacement
-- **< 75%**: Urgent - Replace immediately
+- **< 75%**: Change filter - efficiency declining (default; auto-calibrated monthly)
+- **< 65%**: Critical - filter is failing, replace immediately (default; auto-calibrated monthly)
 
 ### Indoor Air Quality
 - **PM2.5 > 12 μg/m³**: WHO annual guideline exceeded
@@ -124,10 +123,12 @@ else:
 - **CO2 > 1000 ppm**: Ventilation recommended
 - **CO2 > 2000 ppm**: Poor ventilation - immediate action needed
 
-### Smart Alerting (v0.4.0)
-- **High Confidence**: Outdoor PM2.5 > 10 μg/m³ (reliable baseline)
-- **Medium Confidence**: Outdoor PM2.5 5-10 μg/m³
-- **Low Confidence**: Outdoor PM2.5 < 5 μg/m³ (suppressed during activity hours)
+### Seasonal Outdoor PM2.5 Minimums (for reliable efficiency)
+- **Winter (Dec-Feb)**: >= 10 μg/m³ required
+- **Summer (Jun-Aug)**: >= 5 μg/m³ required
+- **Spring/Fall**: >= 7 μg/m³ required
+
+Readings below these thresholds are excluded from efficiency calculations.
 
 ## Data Quality Notes
 
@@ -138,15 +139,16 @@ else:
 
 ## Schema Version
 
-- **Version**: 2.1
-- **Date**: 2025-09-01
+- **Version**: 2.2
+- **Date**: 2026-02-08
+- **Changes in v2.2**: Added Temp Stick sensor type (`tempstick`, room `attic`), updated alert thresholds for HVACMonitor v3
 - **Changes in v2.1**: Added smart alerting thresholds, clarified WHO guidelines
 - **Breaking Change from v1.0**: Added Sensor_ID, Room, Sensor_Type, Indoor_NOX columns (v2.0)
 
 ## Implementation Status
 
-- ✅ Data collection to 18-column schema (v0.4.0)
+- ✅ Data collection to 18-column schema (v0.4.0+)
 - ✅ Multi-room support with sensor identification
-- ✅ Smart alerting with confidence levels
-- ✅ Median-based spike filtering
-- ✅ Activity hour suppression for low-confidence alerts
+- ✅ Temp Stick attic sensor integration (v0.5.0+)
+- ✅ HVACMonitor v3 efficiency-based alerting with seasonal calibration
+- ✅ Median-based efficiency calculation with high-confidence filtering

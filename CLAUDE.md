@@ -192,8 +192,8 @@ When updating `apps_script_code.gs`:
 1. Copy entire file contents
 2. Open Google Sheets → Extensions → Apps Script
 3. Replace all code
-4. Save and test with `testAlert()` function
-5. Check Script Properties has EMAIL_RECIPIENT set
+4. Save and test with `test()` function
+5. Check Script Properties has `ALERT_EMAIL` and `ALERT_EMAIL_2` set
 
 ## HVACMonitor.gs (Google Apps Script)
 
@@ -221,7 +221,7 @@ When updating `apps_script_code.gs`:
 
 4. **Configuration via Script Properties**
    - `LOCATION_LAT`, `LOCATION_LON`, `LOCATION_NAME`, `LOCATION_TIMEZONE`
-   - `EMAIL_RECIPIENT` for alerts
+   - `ALERT_EMAIL` for your alerts, `ALERT_EMAIL_2` for spouse alerts
 
 ### Updating HVACMonitor
 1. Copy contents of `HVACMonitor_v3.gs`
@@ -231,7 +231,8 @@ When updating `apps_script_code.gs`:
 5. Run `calibrateEfficiencyThresholds()` monthly for your data
 
 ### Testing Functions
-- `testEfficiencyCheck()` - Test filter efficiency alerts
+- `test()` - Test all alert checks (efficiency, indoor spike, AQI, pressure, CO2, data gaps, zone filters)
+- `testIndoorSpike()` - Test indoor PM spike detection specifically
 - `analyzeFilterReplacements()` - Compare before/after replacement
 - `analyzeEfficiencyData()` - Validate measurement robustness
 
