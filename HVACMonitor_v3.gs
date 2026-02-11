@@ -656,20 +656,71 @@ function checkDataCollection() {
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) return { status: 'NO_DATA', alert: null };
 
-  const lastTimestamp = new Date(sheet.getRange(lastRow, 1).getValue());
-  const hoursSince = (new Date() - lastTimestamp) / (1000 * 60 * 60);
+  // Scan last 50 rows to find most recent timestamp per sensor type
+  const numRows = Math.min(50, lastRow - 1);
+  const data = sheet.getRange(lastRow - numRows + 1, 1, numRows, 4).getValues();
+  const now = new Date();
+  const props = PropertiesService.getScriptProperties();
 
-  if (hoursSince > CONFIG.DATA_GAP_HOURS) {
-    return {
-      status: 'STOPPED',
-      alert: {
-        level: 'CRITICAL',
-        message: `🚨 DATA COLLECTION STOPPED\nLast data: ${hoursSince.toFixed(1)} hours ago\nCheck your sensors!`
+  const lastSeen = {};  // { sensorType: { timestamp, room } }
+  data.forEach(row => {
+    const ts = new Date(row[COLS.TIMESTAMP]);
+    const room = String(row[COLS.ROOM]);
+    const sensorType = String(row[COLS.SENSOR_TYPE]);
+    if (!sensorType || sensorType === 'undefined') return;
+
+    if (!lastSeen[sensorType] || ts > lastSeen[sensorType].timestamp) {
+      lastSeen[sensorType] = { timestamp: ts, room };
+    }
+  });
+
+  const stoppedSensors = [];
+  const resumedSensors = [];
+
+  Object.entries(lastSeen).forEach(([sensorType, info]) => {
+    const hoursSince = (now - info.timestamp) / (1000 * 60 * 60);
+    const gapKey = `DATA_GAP_${sensorType}`;
+
+    if (hoursSince > CONFIG.DATA_GAP_HOURS) {
+      // Only alert once per sensor per gap
+      if (!props.getProperty(gapKey)) {
+        stoppedSensors.push({ sensorType, room: info.room, hoursSince });
+        props.setProperty(gapKey, now.toISOString());
       }
+    } else {
+      // Check if this sensor is recovering from a gap
+      const wasDown = props.getProperty(gapKey);
+      if (wasDown) {
+        resumedSensors.push({ sensorType, room: info.room, downSince: wasDown });
+        props.deleteProperty(gapKey);
+      }
+    }
+  });
+
+  // Build alert
+  let alert = null;
+  if (stoppedSensors.length > 0) {
+    const details = stoppedSensors
+      .map(s => `  • ${s.room} (${s.sensorType}): ${s.hoursSince.toFixed(1)}h ago`)
+      .join('\n');
+    alert = {
+      level: 'CRITICAL',
+      message: `🚨 SENSOR(S) STOPPED\n${details}\nCheck these sensors!`
+    };
+  } else if (resumedSensors.length > 0) {
+    const details = resumedSensors
+      .map(s => `  • ${s.room} (${s.sensorType})`)
+      .join('\n');
+    alert = {
+      level: 'INFO',
+      message: `✅ SENSOR(S) RESUMED\n${details}\nData collection back to normal.`
     };
   }
 
-  return { status: 'OK', hoursSince };
+  const status = stoppedSensors.length > 0 ? 'PARTIAL' :
+                 Object.keys(lastSeen).length === 0 ? 'NO_DATA' : 'OK';
+
+  return { status, lastSeen, stoppedSensors, resumedSensors, alert };
 }
 
 // ============================================================================

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Project context files: `CLAUDE_CODE_CONTEXT.md` (vision/architecture) and `BACKLOG.md` (prioritized tasks)
 - `.env.example` template for all environment variables
 - 6 new tests for Temp Stick API integration (22 total)
+- AI analysis plan for RAPIDS + Ollama GPU-accelerated pipeline (`docs/AI_ANALYSIS_PLAN.md`)
 
 ### Changed
 - Fixed ERV model in docs: Panasonic FV-04VE1 → Carrier ERVXXLHB (horizontal, attic-installed)
@@ -21,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Temp Stick API returns °C natively (not °F as initially assumed) — removed incorrect double conversion
+- Data gap alert now checks per-sensor instead of last row — no more false positives when one sensor is down
+- Added cooldown (one alert per gap per sensor) and recovery notification when sensor resumes
 
 ## [0.5.0] - 2026-01-17
 
