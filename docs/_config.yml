@@ -1,4 +1,8 @@
-theme: cayman
+remote_theme: pages-themes/cayman@v0.2.0
 title: HVAC Air Quality Analysis
 description: Data-driven indoor air quality monitoring — methodology, architecture, and findings
 show_downloads: false
+
+# Serve Plotly HTML charts as-is (don't process through Jekyll)
+include:
+  - charts
