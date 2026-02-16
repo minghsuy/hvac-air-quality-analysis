@@ -98,9 +98,28 @@ python scripts/update_airgradient_ips.py
 
 Configure static DHCP leases for AirGradient devices to maintain fixed IPs.
 
-## Data Analysis
+## Dashboard & Analysis
+
+### Streamlit Dashboard (`scripts/dashboard.py`)
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Google Sheets   │────▶│  Parquet Cache   │────▶│   Streamlit     │
+│  (98k+ rows)    │     │  (.cache/)       │     │  Dashboard      │
+│  ~3.5s fetch    │     │  ~18ms read      │     │  (7 pages)      │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+```
+
+3-layer caching strategy:
+1. **Parquet on disk** (1hr TTL) — eliminates network latency
+2. **Session state** — persists across page switches within a session
+3. **Pre-aggregated dicts** — hourly/daily summaries computed once on load
+
+### Analysis Tools
 
 - **Real-time**: Google Sheets formulas
-- **Historical**: Python scripts in `scripts/analysis/`
-- **Visualization**: Plotly charts exported to PNG
-- **ML Predictions**: Planned for Google Apps Script
+- **Interactive**: Streamlit dashboard with Plotly charts
+- **Static**: `scripts/create_visualizations.py` for README/LinkedIn PNGs
+- **Benchmarking**: `scripts/bench_heatmap.py` for performance comparisons
+- **Correlation**: Spearman rank correlation for all 14 metrics
+- **Anomaly detection**: LOWESS smoothing with residual-based spike identification

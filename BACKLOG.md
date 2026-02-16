@@ -1,8 +1,8 @@
 # HVAC Air Quality Project - Backlog
 
 > Prioritized task list for Claude Code and human collaboration
-> 
-> Last updated: January 2026
+>
+> Last updated: February 2026
 > Target: LinkedIn post in March 2026
 
 ## Priority Legend
@@ -11,6 +11,44 @@
 - 🟡 P1: Should do, high impact
 - 🟢 P2: Nice to have
 - ⚪ P3: Future / someday
+
+---
+
+## Completed (Feb 2026)
+
+### ✅ Interactive Dashboard (was P0/P1)
+
+- [x] **Streamlit + Plotly dashboard** (`scripts/dashboard.py`)
+  - 7-page multi-page app hosted on DGX Spark (port 8501)
+  - Pages: Overview, CO₂ Compare, Heatmaps, VOC & NOX, Filter & PM2.5, Environment, Correlations
+  - 4 visualization styles: rolling avg + band, heatmap, box plots, LOWESS + anomaly detection
+  - Heatmaps for all 14 metrics organized by Indoor Air / Outdoor / Comfort
+  - Weekday vs weekend profiles, monthly profiles
+  - Parquet cache: 18ms load vs 3.5s Google Sheets API (106x faster)
+  - Pre-aggregation: hourly + daily summaries cached in session state
+  - Date range picker with presets (7d/30d/90d/All)
+
+- [x] **Multivariate correlation analysis**
+  - Spearman rank correlation (default) — robust to outliers, captures monotonic relationships
+  - Pearson available as toggle for comparison
+  - 14-metric correlation matrix with notable pairs highlighted
+  - Outdoor → Indoor scatter plots with trend lines
+  - ERV tradeoff visualization (CO₂ vs PM2.5 dual axis)
+
+- [x] **Data quality fixes**
+  - Column shift bug (pre-Sep 2025, 17-col rows) — NaN affected columns via `_orig_cols` tracking
+  - Second bedroom sensor = near kitchen (cooking spike context)
+  - Oct 2025 data gap (migration from UI cloud to DGX Spark)
+
+### Key Findings from Correlation Analysis (Spearman)
+
+| Pair | ρ | Insight |
+|------|---|---------|
+| Indoor PM2.5 ↔ Filter Efficiency | -0.96 | Near-perfect inverse, validates data |
+| CO₂ ↔ VOC | 0.65 | Both rise with low ventilation — ERV signal |
+| Outdoor PM2.5 ↔ Radon | 0.59 | Atmospheric stagnation drives both |
+| Outdoor Temp ↔ Outdoor CO₂ | -0.59 | Winter inversions trap CO₂ |
+| Outdoor VOC ↔ Outdoor NOX | -0.45 | Different sources, opposite seasonality |
 
 ---
 
@@ -24,87 +62,90 @@
   - Move technical content below the human story
 
 - [ ] **Add "Results" section to README**
-  ```markdown
-  ## Results
-  
-  ### For My Family
-  - Son's bedroom CO2: 1000+ ppm → 600 ppm (with ERV)
-  - Son's sickness: every 45 days → healthy all fall/winter 2025
-  - Sleep quality: improved (stable temps, no gas furnace cycling)
-  
-  ### From the Data (82,791 readings)
-  - Filters maintain >85% efficiency for 120+ days (not 45 as marketed)
-  - Filter at 197% of "max life" still performed at 87.3%
-  - Saved $130-910/year on unnecessary filter replacements
-  ```
+  - Update row count to 98k+ readings
+  - Include correlation findings (CO₂ ↔ VOC, ERV tradeoff)
+  - Add dashboard screenshots
 
 - [ ] **Add architecture diagram to README**
-  - Show sensor → collection → sheets → alerting flow
+  - Show sensor → collection → sheets → dashboard → alerting flow
+  - Include DGX Spark as compute node
   - Mermaid diagram preferred (renders on GitHub)
 
-### 🔴 P0: Visualizations
+### 🔴 P0: Static Visualizations for README/LinkedIn
 
-- [ ] **Create CO2 before/after chart**
-  - Time series showing CO2 levels
-  - Annotate "ERV installed" point
-  - Show 1000 ppm threshold line
-  - Export as PNG for README and LinkedIn
+- [ ] **Export key charts as PNG from dashboard**
+  - CO₂ heatmap showing ERV flow change (before/after Thanksgiving)
+  - Filter efficiency over time (>85% past 120 days)
+  - Correlation matrix (Spearman) — shows all metric relationships
+  - ERV tradeoff chart (CO₂ vs PM2.5)
+  - Indoor vs outdoor PM2.5 during high AQI event
 
-- [ ] **Create filter efficiency over time chart**
-  - Show efficiency staying >85% past 120 days
-  - Annotate manufacturer's "replace at 45 days" point
-  - Prove the contrarian finding visually
+### ~~🔴 P0: PR for Dashboard Work~~ ✅
 
-- [ ] **Create indoor vs outdoor PM2.5 during wildfire**
-  - If you have data from a high AQI day
-  - Show "AQI 200+ outside, <20 inside"
-  - California angle for broader appeal
+- [x] **Create PR with dashboard + benchmark + analysis**
+  - `scripts/dashboard.py` — multi-page Streamlit dashboard
+  - `scripts/bench_heatmap.py` — performance benchmark
+  - `.cache/` in `.gitignore`
+  - Update dependencies in `pyproject.toml` (streamlit, statsmodels, polars)
 
-### 🟡 P1: Documentation Cleanup
+### 🟡 P1: Documentation
 
-- [ ] **Add dashboard screenshot to README**
-  - Screenshot of Google Sheets with data
-  - Or create a simple HTML visualization
+- [ ] **Add dashboard section to README**
+  - Screenshots of key pages
+  - How to run locally
+  - Architecture: Sheets API → Parquet cache → Streamlit
 
-- [ ] **Sync Wiki content with README**
-  - Ensure no duplication/contradiction
-  - Wiki = deep dive, README = overview + results
-
-- [ ] **Review and update LESSONS_LEARNED.md**
-  - Add recent discoveries
-  - Document what worked
+- [ ] **Sync Wiki with current state**
+  - Analysis Techniques page: add Spearman correlation, LOWESS, heatmap methodology
+  - Add dashboard as primary analysis tool
 
 ---
 
-## Phase 2: Webapp Dashboard (Target: May 2026)
+## Phase 2: Deeper Analysis (Target: April 2026)
 
-### 🟡 P1: Dashboard MVP
+### 🟡 P1: ERV Decision Engine
 
-- [ ] **Set up React/Next.js project**
-  - Learn TSX through building
-  - Simple, mobile-friendly design
+- [ ] **Build ERV flow recommendation logic**
+  - Use CO₂ + VOC as "need more air" signal (ρ=0.65, both rise together)
+  - Check Outdoor PM2.5 + Outdoor NOX before recommending high flow
+  - Outdoor VOC as "smell risk" indicator (wife's complaint)
+  - Seasonal thresholds (winter inversions vs summer clean air)
 
-- [ ] **Connect to Google Sheets API**
-  - Read recent data
-  - Service account auth
+- [ ] **Add recommendation panel to dashboard**
+  - Current ERV flow recommendation based on latest readings
+  - "Turn up" when CO₂ > X AND Outdoor PM2.5 < Y
+  - "Keep low" when Outdoor NOX > Z (smell/pollution risk)
 
-- [ ] **Dashboard views**
-  - [ ] Current status (CO2, PM2.5, efficiency, ERV state)
-  - [ ] 24-hour trends
-  - [ ] Filter status (days since change, efficiency)
-  - [ ] Room comparison (son's room vs master)
+### 🟡 P1: Cooking Event Detection
 
-- [ ] **Host on DGX Spark**
-  - Always-on home server
-  - Local network access
-  - Optional: expose via Tailscale
+- [ ] **Identify cooking events from PM2.5 spikes**
+  - Second bedroom (kitchen) sensor as primary detector
+  - Time-of-day patterns (dinner hours)
+  - Separate cooking spikes from actual air quality events
+  - Quantify: how long does PM2.5 stay elevated after cooking?
 
-### 🟢 P2: Dashboard Enhancements
+### 🟡 P1: Weather Correlation
 
-- [ ] Add historical views (7-day, 30-day)
-- [ ] Add wildfire smoke alerts
-- [ ] Add recommendations panel
-- [ ] Mobile app wrapper (PWA)
+- [ ] **Integrate weather API data**
+  - Rain events → outdoor PM2.5 suppression (observed Nov 2025)
+  - Temperature inversions → elevated outdoor CO₂ and PM2.5
+  - Wind speed/direction → outdoor VOC/NOX variations
+  - Correlate with existing sensor data
+
+### 🟢 P2: Anomaly Detection
+
+- [ ] **Automated anomaly alerts**
+  - LOWESS baseline + threshold detection (already prototyped in CO₂ Compare)
+  - Alert when CO₂ + VOC both elevated (ventilation insufficient)
+  - Alert when Outdoor PM2.5 + Radon both elevated (atmospheric stagnation)
+  - Push notifications (email, Slack, or dashboard toast)
+
+### 🟢 P2: Attic Monitoring Analysis
+
+- [ ] **Tempstick data analysis**
+  - Attic temp vs outdoor temp → insulation effectiveness
+  - Humidity trends → moisture/mold risk detection
+  - Seasonal patterns
 
 ---
 
@@ -117,10 +158,11 @@
   - Integration with existing switches?
   - Home Assistant bridge?
 
-- [ ] **Implement basic on/off control**
-  - When outdoor AQI > 35, turn off
-  - When outdoor AQI < 15, turn on
+- [ ] **Implement automated ERV control**
+  - Based on decision engine from Phase 2
+  - CO₂ + VOC + Outdoor PM2.5 + Outdoor NOX as inputs
   - Cooldown periods to avoid cycling
+  - Override for manual control
 
 ### 🟢 P2: Carrier Integration
 
@@ -156,37 +198,17 @@
 The GitHub Wiki is a **separate git repository**. Handle it carefully:
 
 ```bash
-# Wiki repo location
-/Users/ming/Documents/Github/hvac-air-quality-analysis/wiki-repo/
+# Wiki repo location (on DGX Spark)
+~/hvac-air-quality-analysis/wiki-repo/
 
 # Clone if not exists
 git clone https://github.com/minghsuy/hvac-air-quality-analysis.wiki.git wiki-repo
-
-# Update wiki
-cd wiki-repo
-git pull
-# make changes
-git add -A
-git commit -m "Update wiki content"
-git push
 
 # NEVER do this (embeds git repo in git repo):
 git add wiki-repo  # NO!
 ```
 
 **Wiki is in .gitignore** - this is correct, keep it that way.
-
-### Wiki Content Plan
-
-| Page | Status | Notes |
-|------|--------|-------|
-| Home | ✅ Exists | Overview |
-| Why This Project Matters | ✅ Exists | Personal story - the hook |
-| Hardware Setup | ✅ Exists | Sensor details |
-| Software Setup | ✅ Exists | Installation |
-| Data Collection | ✅ Exists | How it works |
-| Analysis Results | ✅ Exists | Findings |
-| Analysis Techniques | ✅ Exists | Methodology |
 
 ---
 
@@ -197,14 +219,14 @@ My mother lived next to a freeway for 20 years. The constant coughing. The asthm
 
 After she passed, I became obsessed with air quality. My son was getting sick every 45 days. My wife has asthma.
 
-So I built a monitoring system. 82,791 sensor readings later:
+So I built a monitoring system. 98,000+ sensor readings later:
 
 📊 Finding #1: Filters last 120+ days at >85% efficiency (manufacturers say 45)
-📊 Finding #2: A bedroom with 2 people easily exceeds 1000 ppm CO2 (cognitive impairment threshold)
-📊 Finding #3: My son hasn't been sick since fall 2025
+📊 Finding #2: CO₂ and VOC are strongly correlated (ρ=0.65) — when your bedroom CO₂ is high, VOC is too
+📊 Finding #3: Outdoor PM2.5 and indoor radon correlate (ρ=0.59) — atmospheric stagnation affects both
+📊 Finding #4: My son hasn't been sick since fall 2025
 
-The ROI on air quality monitoring beats tutoring and private school for cognitive development.
-
+Built with Python, AirGradient/Airthings sensors, Google Sheets, and a DGX Spark for analysis.
 Open sourced so other families can benefit.
 
 GitHub: [link]
@@ -225,7 +247,8 @@ When working on this project:
 5. **Wiki is separate** - don't try to git add wiki-repo
 
 When creating visualizations:
-- Use Plotly or Matplotlib
-- Export as PNG for README/LinkedIn
+- Use Plotly (interactive) for dashboard, Matplotlib for static PNGs
+- Use Spearman correlation for sensor data (robust to outliers, non-linear relationships)
 - Keep it simple - one insight per chart
 - Add annotations to highlight key points
+- Pre-aggregate data to avoid browser performance issues
