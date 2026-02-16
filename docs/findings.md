@@ -16,7 +16,7 @@ Analysis of 98,000+ readings from the primary bedroom sensor reveals five notabl
 
 ### Why These Matter
 
-**PM2.5 <-> Filter Efficiency (rho = -0.96)**: This validates the measurement approach. If the correlation were weak, it would mean either the sensors are unreliable or the efficiency formula is wrong. At -0.96, the data self-validates.
+**PM2.5 <-> Filter Efficiency (rho = -0.96)**: A strong inverse correlation is expected here because Indoor PM2.5 is a component of the efficiency formula (`Efficiency = (Outdoor - Indoor) / Outdoor`). The correlation doesn't independently "prove" the filter works — it confirms that the sensors produce consistent readings and the formula behaves as designed. A *weak* correlation would indicate sensor unreliability or confounding indoor sources overwhelming the measurement.
 
 **CO2 <-> VOC (rho = 0.65)**: Both are ventilation indicators. When CO2 is high, VOC is too — confirming that the ERV is the primary ventilation mechanism and its flow rate drives both metrics simultaneously.
 
@@ -31,6 +31,11 @@ MERV 13 filters maintain >85% efficiency for 120+ days. The manufacturer-recomme
 - Average efficiency over the measurement period: consistently above 85%
 - A filter at 197% of theoretical "max life" was still performing at 87.3% efficiency
 - Load-based prediction models failed — filter load doesn't correlate with efficiency degradation
+
+### Caveats
+
+- **Outdoor PM2.5 threshold**: The efficiency formula is unreliable when outdoor PM2.5 is below ~5 ug/m3 (see [Methodology — Filter Efficiency Formula](methodology.md#filter-efficiency-formula)). Days with very clean outdoor air are excluded from efficiency tracking. If a significant portion of the 120+ day window had low outdoor PM2.5, fewer days contributed to the efficiency measurement than the calendar count implies.
+- **Single household**: These results reflect one home's HVAC system, climate zone, and occupancy patterns. Filter longevity depends on factors like outdoor pollution levels, home size, duct configuration, and ERV usage.
 
 ### Cost Impact
 

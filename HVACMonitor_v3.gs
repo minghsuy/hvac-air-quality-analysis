@@ -72,7 +72,7 @@ const CONFIG = {
   // Zone filters don't affect efficiency readings - time-based only
   ZONE_FILTER_DAYS: {
     zone_master: 90,    // 12x12x1 in master bedroom
-    zone_second: 90,    // 12x12x1 in son's bedroom
+    zone_second: 90,    // 12x12x1 in second bedroom
   },
 
   // CO2 thresholds

@@ -3,7 +3,7 @@
 Create P0 visualizations for README and LinkedIn post.
 
 Pulls data from Google Sheets API and generates:
-1. CO2 before/after ERV chart (son's bedroom)
+1. CO2 before/after ERV chart (bedrooms)
 2. Filter efficiency over time
 3. Indoor vs outdoor PM2.5 during high AQI events
 """
@@ -65,7 +65,7 @@ def fetch_data():
 
 
 def chart_co2_bedroom(df):
-    """Chart 1: CO2 levels in son's bedroom showing ERV impact."""
+    """Chart 1: CO2 levels by bedroom showing ERV impact."""
     # Filter for rooms with CO2 data
     co2 = df[df["Indoor_CO2"].notna() & (df["Indoor_CO2"] > 0)].copy()
 
@@ -96,7 +96,7 @@ def chart_co2_bedroom(df):
             alpha=0.6,
             linewidth=0.8,
             color="#E8744F",
-            label=f"Son's Bedroom (avg {second_hourly.mean():.0f} ppm)",
+            label=f"Second Bedroom (avg {second_hourly.mean():.0f} ppm)",
         )
 
     # Threshold lines

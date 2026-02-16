@@ -67,6 +67,8 @@ An interactive Streamlit dashboard makes the data explorable:
 streamlit run scripts/dashboard.py --server.port 8501
 ```
 
+> **Prerequisites**: The dashboard requires a configured `.env` file (with `GOOGLE_SPREADSHEET_ID` and `GOOGLE_SHEET_TAB`), a valid `google-credentials.json` service account file, and an active Google Sheet with sensor data. See [Configuration](#configuration) for setup.
+
 **7 pages**: Overview, CO2 Compare, Heatmaps, VOC & NOX, Filter & PM2.5, Environment, Correlations
 
 - Spearman rank correlation matrix for all 14 metrics

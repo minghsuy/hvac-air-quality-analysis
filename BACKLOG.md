@@ -212,30 +212,6 @@ git add wiki-repo  # NO!
 
 ---
 
-## LinkedIn Post Draft (for March)
-
-```
-My mother lived next to a freeway for 20 years. The constant coughing. The asthma. The cancer.
-
-After she passed, I became obsessed with air quality. My son was getting sick every 45 days. My wife has asthma.
-
-So I built a monitoring system. 98,000+ sensor readings later:
-
-📊 Finding #1: Filters last 120+ days at >85% efficiency (manufacturers say 45)
-📊 Finding #2: CO₂ and VOC are strongly correlated (ρ=0.65) — when your bedroom CO₂ is high, VOC is too
-📊 Finding #3: Outdoor PM2.5 and indoor radon correlate (ρ=0.59) — atmospheric stagnation affects both
-📊 Finding #4: My son hasn't been sick since fall 2025
-
-Built with Python, AirGradient/Airthings sensors, Google Sheets, and a DGX Spark for analysis.
-Open sourced so other families can benefit.
-
-GitHub: [link]
-
-#DataScience #AirQuality #ParentingWithData #OpenSource
-```
-
----
-
 ## Notes for Claude Code
 
 When working on this project:

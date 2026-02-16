@@ -4,20 +4,24 @@
 
 ## Why Spearman Over Pearson
 
-Environmental sensor data violates Pearson's assumptions. Spearman rank correlation captures the actual relationships.
+Pearson correlation assumes three things about the data: **normality** (variables follow a normal distribution), **linearity** (relationships are straight lines), and **homoscedasticity** (constant variance). Environmental sensor data violates all three.
 
-### Concrete Example: PM2.5 vs Filter Efficiency
+### Where Pearson's Assumptions Break Down
 
-| Method | Correlation | Interpretation |
-|--------|-------------|----------------|
-| Spearman | rho = -0.96 | Near-perfect inverse — higher PM2.5 means lower efficiency |
-| Pearson | r = -0.72 | Weaker, distorted by cooking spikes and outliers |
+1. **Non-normal distributions**: PM2.5 jumps from 3 to 80 ug/m3 during cooking events, creating heavy right tails. NOX index has a mean of ~1.06 with minimal variance, concentrating nearly all values near zero. Neither is normally distributed.
+2. **Non-linear relationships**: Outdoor VOC and NOX have an inverse seasonal pattern — the relationship is monotonic but not linear. Pearson reports near-zero; Spearman correctly identifies the trend (rho = -0.45).
+3. **Heteroscedastic variance**: Sensor noise increases with magnitude — a PM2.5 reading of 50 ug/m3 has more absolute error than a reading of 5 ug/m3. This violates Pearson's constant-variance assumption.
 
-Pearson assumes linear relationships between normally distributed variables. Sensor data has:
+Spearman rank correlation operates on ranks, not raw values, making it robust to all three violations. It captures monotonic relationships regardless of distribution shape or outliers.
 
-1. **Cooking spikes**: PM2.5 jumps from 3 to 80 ug/m3 during cooking, then returns to baseline. These extreme values inflate Pearson correlation and distort the relationship.
-2. **Near-flat distributions**: NOX index has a mean of ~1.06 with minimal variance. Pearson sees no signal; Spearman correctly identifies monotonic trends.
-3. **Non-linear relationships**: Outdoor VOC and NOX have an inverse seasonal pattern (rho = -0.45 with Spearman, near-zero with Pearson) because the relationship is monotonic but not linear.
+### Illustration: PM2.5 vs Filter Efficiency
+
+| Method | Correlation | Why |
+|--------|-------------|-----|
+| Spearman | rho = -0.96 | Ranks are unaffected by cooking spike magnitudes |
+| Pearson | r = -0.72 | Cooking spikes and outliers pull the linear fit away from the true relationship |
+
+The difference isn't that Spearman gives "bigger numbers" — it's that Pearson underestimates the strength of relationships when its assumptions are violated. For data that meets Pearson's assumptions, both methods converge.
 
 The dashboard defaults to Spearman with a toggle to Pearson for comparison.
 
