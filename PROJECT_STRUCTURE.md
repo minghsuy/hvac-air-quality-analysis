@@ -14,8 +14,7 @@
 ├── scripts/
 │   ├── dashboard.py               # Multi-page Streamlit dashboard (7 pages)
 │   ├── bench_heatmap.py           # Performance benchmark (Sheets vs Parquet vs Polars)
-│   └── create_visualizations.py   # Static PNG chart generator
-├── images/                         # Generated visualization PNGs
+│   └── create_visualizations.py   # Interactive Plotly HTML chart generator
 ├── .cache/                         # Parquet data cache (gitignored)
 ├── analyze_historical.py          # Historical data analyzer
 ├── analysis.ipynb                 # Jupyter notebook for interactive analysis
@@ -62,6 +61,7 @@
 │   ├── LESSONS_LEARNED.md       # Key insights from deployment
 │   ├── 5_MINUTE_INTERVALS.md    # Why we use 5-minute collection
 │   ├── _config.yml              # GitHub Pages Jekyll config
+│   ├── charts/                  # Interactive Plotly HTML charts (generated)
 │   ├── index.md                 # GitHub Pages landing page
 │   ├── dashboard-architecture.md # Dashboard design and caching
 │   ├── methodology.md           # Statistical methodology (Spearman, LOWESS)

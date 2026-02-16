@@ -1,31 +1,46 @@
 #!/usr/bin/env python3
 """
-Create P0 visualizations for README and LinkedIn post.
+Create interactive Plotly HTML visualizations for GitHub Pages.
 
-Pulls data from Google Sheets API and generates:
+Pulls data from Parquet cache (or Google Sheets API fallback) and generates:
 1. CO2 before/after ERV chart (bedrooms)
 2. Filter efficiency over time
 3. Indoor vs outdoor PM2.5 during high AQI events
+
+Output: docs/charts/*.html (lightweight — Plotly.js loaded from CDN)
 """
 
 import os
 import sys
 
-import matplotlib.dates as mdates
-import matplotlib.pyplot as plt
 import pandas as pd
+import plotly.graph_objects as go
 from dotenv import load_dotenv
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
 
 load_dotenv()
 
-OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "images")
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, "docs", "charts")
+CACHE_PATH = os.path.join(BASE_DIR, ".cache", "air_quality.parquet")
 
+LIGHT_LAYOUT = {
+    "template": "plotly_white",
+    "font": {"family": "Inter, system-ui, sans-serif"},
+    "margin": {"l": 60, "r": 30, "t": 60, "b": 40},
+    "hovermode": "x unified",
+    "legend": {"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "right", "x": 1},
+}
 
-CACHE_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), ".cache", "air_quality.parquet"
-)
+COLORS = {
+    "master": "#4A90D9",
+    "second": "#E8744F",
+    "outdoor": "#F44336",
+    "indoor": "#4CAF50",
+    "threshold": "#D32F2F",
+    "good": "#4CAF50",
+    "warn": "#FF9800",
+    "rolling": "#1565C0",
+}
 
 
 def fetch_data():
@@ -38,6 +53,9 @@ def fetch_data():
         return df
 
     print("No Parquet cache found, fetching from Google Sheets...")
+    from google.oauth2 import service_account
+    from googleapiclient.discovery import build
+
     spreadsheet_id = os.getenv("GOOGLE_SPREADSHEET_ID")
     sheet_tab = os.getenv("GOOGLE_SHEET_TAB", "")
 
@@ -62,7 +80,6 @@ def fetch_data():
     df = pd.DataFrame(values[1:], columns=headers)
     print(f"Fetched {len(df):,} rows")
 
-    # Parse types
     df["Timestamp"] = pd.to_datetime(df["Timestamp"], errors="coerce")
     for col in [
         "Indoor_PM25",
@@ -79,105 +96,120 @@ def fetch_data():
 
 def chart_co2_bedroom(df):
     """Chart 1: CO2 levels by bedroom showing ERV impact."""
-    # Filter for rooms with CO2 data
     co2 = df[df["Indoor_CO2"].notna() & (df["Indoor_CO2"] > 0)].copy()
 
-    # Separate by room
     master = co2[co2["Room"] == "master_bedroom"].copy()
     second = co2[co2["Room"] == "second_bedroom"].copy()
 
-    # Resample to hourly averages for cleaner chart
-    master_hourly = master.set_index("Timestamp")["Indoor_CO2"].resample("1h").mean().dropna()
-    second_hourly = second.set_index("Timestamp")["Indoor_CO2"].resample("1h").mean().dropna()
+    master_daily = (
+        master.set_index("Timestamp")["Indoor_CO2"]
+        .resample("1D")
+        .agg(["mean", "min", "max"])
+        .dropna()
+    )
+    second_daily = (
+        second.set_index("Timestamp")["Indoor_CO2"]
+        .resample("1D")
+        .agg(["mean", "min", "max"])
+        .dropna()
+    )
 
-    fig, ax = plt.subplots(figsize=(14, 6))
+    fig = go.Figure()
 
-    if not master_hourly.empty:
-        ax.plot(
-            master_hourly.index,
-            master_hourly.values,
-            alpha=0.6,
-            linewidth=0.8,
-            color="#4A90D9",
-            label=f"Master Bedroom (avg {master_hourly.mean():.0f} ppm)",
+    for daily, color, name in [
+        (master_daily, COLORS["master"], "Master"),
+        (second_daily, COLORS["second"], "Second Bedroom"),
+    ]:
+        if daily.empty:
+            continue
+        r_mean = daily["mean"].rolling(3, min_periods=1).mean()
+        r_min = daily["min"].rolling(3, min_periods=1).min()
+        r_max = daily["max"].rolling(3, min_periods=1).max()
+
+        hex_c = color
+        rgba = f"rgba({int(hex_c[1:3], 16)},{int(hex_c[3:5], 16)},{int(hex_c[5:7], 16)},0.12)"
+
+        # Band (max/min)
+        fig.add_trace(
+            go.Scatter(
+                x=r_max.index,
+                y=r_max.values,
+                mode="lines",
+                line={"width": 0},
+                showlegend=False,
+                hoverinfo="skip",
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=r_min.index,
+                y=r_min.values,
+                mode="lines",
+                line={"width": 0},
+                fill="tonexty",
+                fillcolor=rgba,
+                showlegend=False,
+                hoverinfo="skip",
+            )
+        )
+        # Rolling mean
+        fig.add_trace(
+            go.Scatter(
+                x=r_mean.index,
+                y=r_mean.values,
+                mode="lines",
+                name=f"{name} (avg {daily['mean'].mean():.0f} ppm)",
+                line={"color": color, "width": 2.5},
+                hovertemplate=f"%{{y:.0f}} ppm<extra>{name}</extra>",
+            )
         )
 
-    if not second_hourly.empty:
-        ax.plot(
-            second_hourly.index,
-            second_hourly.values,
-            alpha=0.6,
-            linewidth=0.8,
-            color="#E8744F",
-            label=f"Second Bedroom (avg {second_hourly.mean():.0f} ppm)",
-        )
-
-    # Threshold lines
-    ax.axhline(
+    fig.add_hline(
         y=1000,
-        color="#D32F2F",
-        linestyle="--",
-        linewidth=1.5,
-        alpha=0.8,
-        label="1000 ppm — cognitive impairment threshold",
+        line_dash="dash",
+        line_color=COLORS["threshold"],
+        annotation_text="1000 ppm — cognitive impairment threshold",
+        annotation_position="top left",
     )
-    ax.axhline(
+    fig.add_hline(
         y=600,
-        color="#4CAF50",
-        linestyle="--",
-        linewidth=1,
-        alpha=0.5,
-        label="600 ppm — target with ERV",
+        line_dash="dot",
+        line_color=COLORS["good"],
+        annotation_text="600 ppm — target with ERV",
+        annotation_position="bottom left",
+        opacity=0.5,
     )
 
-    # Annotations
-    ax.annotate(
-        "CO₂ > 1000 ppm reduces\ncognitive performance by 72%",
-        xy=(0.02, 0.92),
-        xycoords="axes fraction",
-        fontsize=9,
-        color="#D32F2F",
-        fontstyle="italic",
-        verticalalignment="top",
-        bbox={
-            "boxstyle": "round,pad=0.3",
-            "facecolor": "#FFEBEE",
-            "edgecolor": "#D32F2F",
-            "alpha": 0.8,
+    pct_above_1000 = (co2["Indoor_CO2"] > 1000).mean() * 100
+    fig.add_annotation(
+        text=(
+            f"Only {pct_above_1000:.1f}% of readings exceed 1000 ppm"
+            f"<br>({len(co2):,} total readings)"
+        ),
+        xref="paper",
+        yref="paper",
+        x=0.98,
+        y=0.02,
+        showarrow=False,
+        font={"size": 11, "color": "#555"},
+        align="right",
+        xanchor="right",
+        yanchor="bottom",
+    )
+
+    fig.update_layout(
+        **LIGHT_LAYOUT,
+        title={
+            "text": "Indoor CO\u2082 Levels — ERV Keeps Bedrooms Below Impairment Threshold",
+            "font": {"size": 16},
         },
+        yaxis_title="CO\u2082 (ppm)",
+        yaxis={"range": [300, 1200]},
+        height=500,
     )
 
-    ax.set_title(
-        "Indoor CO₂ Levels — ERV Keeps Bedrooms Below Impairment Threshold",
-        fontsize=14,
-        fontweight="bold",
-        pad=15,
-    )
-    ax.set_ylabel("CO₂ (ppm)", fontsize=12)
-    ax.set_xlabel("")
-    ax.legend(loc="upper right", fontsize=9)
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
-    ax.xaxis.set_major_locator(mdates.MonthLocator())
-    ax.grid(axis="y", alpha=0.3)
-    ax.set_ylim(bottom=300)
-
-    # Stats annotation
-    all_co2 = co2["Indoor_CO2"]
-    pct_above_1000 = (all_co2 > 1000).mean() * 100
-    ax.annotate(
-        f"Only {pct_above_1000:.1f}% of readings exceed 1000 ppm\n({len(co2):,} total readings)",
-        xy=(0.98, 0.02),
-        xycoords="axes fraction",
-        fontsize=9,
-        ha="right",
-        va="bottom",
-        color="#555",
-    )
-
-    plt.tight_layout()
-    path = os.path.join(OUTPUT_DIR, "co2_bedroom_levels.png")
-    fig.savefig(path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
+    path = os.path.join(OUTPUT_DIR, "co2_bedroom_levels.html")
+    fig.write_html(path, include_plotlyjs="cdn")
     print(f"Saved: {path}")
 
 
@@ -185,112 +217,117 @@ def chart_filter_efficiency(df):
     """Chart 2: Filter efficiency over time — lasting well past manufacturer recommendation."""
     eff = df[df["Filter_Efficiency"].notna() & (df["Filter_Efficiency"] > 0)].copy()
 
-    # Use master bedroom (airthings) for consistent efficiency reading
     eff_master = eff[eff["Room"] == "master_bedroom"].copy()
     if eff_master.empty:
         eff_master = eff.copy()
 
-    eff_hourly = (
-        eff_master.set_index("Timestamp")["Filter_Efficiency"].resample("1h").mean().dropna()
-    )
-
-    # Calculate daily averages for trend line
     eff_daily = (
-        eff_master.set_index("Timestamp")["Filter_Efficiency"].resample("1D").mean().dropna()
+        eff_master.set_index("Timestamp")["Filter_Efficiency"]
+        .resample("1D")
+        .agg(["mean", "min", "max"])
+        .dropna()
     )
 
-    fig, ax = plt.subplots(figsize=(14, 6))
+    # 6-hourly scatter points (faded)
+    eff_6h = eff_master.set_index("Timestamp")["Filter_Efficiency"].resample("6h").mean().dropna()
 
-    # Hourly scatter (faded)
-    ax.scatter(
-        eff_hourly.index,
-        eff_hourly.values,
-        alpha=0.15,
-        s=3,
-        color="#4A90D9",
-        label="_nolegend_",
-    )
+    rolling = eff_daily["mean"].rolling(window=7, min_periods=1).mean()
 
-    # Daily moving average
-    rolling = eff_daily.rolling(window=7, min_periods=1).mean()
-    ax.plot(
-        rolling.index,
-        rolling.values,
-        linewidth=2.5,
-        color="#1565C0",
-        label="7-day rolling average",
+    fig = go.Figure()
+
+    # Scatter points
+    if not eff_6h.empty:
+        fig.add_trace(
+            go.Scatter(
+                x=eff_6h.index,
+                y=eff_6h.values,
+                mode="markers",
+                name="6h readings",
+                marker={"color": COLORS["master"], "size": 3, "opacity": 0.2},
+            )
+        )
+
+    # 7-day rolling average
+    fig.add_trace(
+        go.Scatter(
+            x=rolling.index,
+            y=rolling.values,
+            mode="lines",
+            name="7-day rolling average",
+            line={"color": COLORS["rolling"], "width": 3},
+            hovertemplate="%{y:.1f}%<extra>7d avg</extra>",
+        )
     )
 
     # 85% threshold
-    ax.axhline(
+    fig.add_hline(
         y=85,
-        color="#4CAF50",
-        linestyle="--",
-        linewidth=1.5,
-        alpha=0.7,
-        label="85% — good efficiency threshold",
+        line_dash="dash",
+        line_color=COLORS["good"],
+        annotation_text="85% — good efficiency threshold",
+        annotation_position="bottom right",
     )
 
-    # Manufacturer's 45-day and 90-day markers
-    start_date = eff_hourly.index.min()
-    day_45 = start_date + pd.Timedelta(days=45)
-    day_90 = start_date + pd.Timedelta(days=90)
-    day_120 = start_date + pd.Timedelta(days=120)
-
-    for day, label, color in [
-        (day_45, "Mfr says: replace\nat 45 days", "#FF9800"),
-        (day_90, "90 days\n(ERV filter spec)", "#F44336"),
-        (day_120, "120 days\n(still >85%!)", "#4CAF50"),
+    # Milestone markers
+    start_date = eff_daily.index.min()
+    end_date = eff_daily.index.max()
+    for days, label, color in [
+        (45, "Mfr: 45d", COLORS["warn"]),
+        (90, "ERV spec: 90d", COLORS["threshold"]),
+        (120, "120d — >85%!", COLORS["good"]),
     ]:
-        if day <= eff_hourly.index.max():
-            ax.axvline(x=day, color=color, linestyle=":", linewidth=1.5, alpha=0.7)
-            ax.annotate(
-                label,
-                xy=(day, ax.get_ylim()[1] * 0.95),
-                fontsize=8,
-                color=color,
-                fontweight="bold",
-                ha="center",
-                va="top",
+        md = start_date + pd.Timedelta(days=days)
+        if md <= end_date:
+            fig.add_vline(
+                x=int(md.timestamp() * 1000),
+                line_dash="dot",
+                line_color=color,
+                opacity=0.7,
+            )
+            fig.add_annotation(
+                x=md,
+                y=1.0,
+                yref="paper",
+                text=label,
+                showarrow=False,
+                font={"size": 10, "color": color},
+                yanchor="top",
             )
 
-    # Title and labels
-    total_days = (eff_hourly.index.max() - eff_hourly.index.min()).days
-    avg_eff = eff_daily.mean()
-    ax.set_title(
-        f"Filter Efficiency Over {total_days} Days — Lasting Far Beyond Manufacturer Specs",
-        fontsize=14,
-        fontweight="bold",
-        pad=15,
+    total_days = (end_date - start_date).days
+    avg_eff = eff_daily["mean"].mean()
+    fig.add_annotation(
+        text=(
+            f"Average efficiency: {avg_eff:.1f}%"
+            f"<br>Savings: $130\u2013$910/yr on unnecessary replacements"
+        ),
+        xref="paper",
+        yref="paper",
+        x=0.98,
+        y=0.05,
+        showarrow=False,
+        font={"size": 11, "color": "#555"},
+        align="right",
+        xanchor="right",
+        yanchor="bottom",
+        bgcolor="rgba(232,245,233,0.8)",
+        bordercolor=COLORS["good"],
+        borderwidth=1,
     )
-    ax.set_ylabel("Filter Efficiency (%)", fontsize=12)
-    ax.set_xlabel("")
-    ax.legend(loc="lower left", fontsize=9)
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
-    ax.xaxis.set_major_locator(mdates.MonthLocator())
-    ax.grid(axis="y", alpha=0.3)
-    ax.set_ylim(0, 105)
 
-    ax.annotate(
-        f"Average efficiency: {avg_eff:.1f}%\nSavings: $130–$910/yr on unnecessary replacements",
-        xy=(0.98, 0.05),
-        xycoords="axes fraction",
-        fontsize=9,
-        ha="right",
-        va="bottom",
-        color="#555",
-        bbox={
-            "boxstyle": "round,pad=0.3",
-            "facecolor": "#E8F5E9",
-            "edgecolor": "#4CAF50",
-            "alpha": 0.8,
+    fig.update_layout(
+        **LIGHT_LAYOUT,
+        title={
+            "text": f"Filter Efficiency Over {total_days} Days — Lasting Far Beyond Manufacturer Specs",
+            "font": {"size": 16},
         },
+        yaxis_title="Filter Efficiency (%)",
+        yaxis={"range": [0, 105]},
+        height=500,
     )
 
-    plt.tight_layout()
-    path = os.path.join(OUTPUT_DIR, "filter_efficiency_over_time.png")
-    fig.savefig(path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
+    path = os.path.join(OUTPUT_DIR, "filter_efficiency.html")
+    fig.write_html(path, include_plotlyjs="cdn")
     print(f"Saved: {path}")
 
 
@@ -300,131 +337,95 @@ def chart_indoor_vs_outdoor_pm25(df):
         df["Indoor_PM25"].notna() & df["Outdoor_PM25"].notna() & (df["Outdoor_PM25"] > 0)
     ].copy()
 
-    # Use room with both indoor and outdoor readings
     pm_main = pm[pm["Room"] == "master_bedroom"].copy()
     if pm_main.empty:
         pm_main = pm.copy()
 
-    pm_hourly_indoor = pm_main.set_index("Timestamp")["Indoor_PM25"].resample("1h").mean().dropna()
-    pm_hourly_outdoor = (
-        pm_main.set_index("Timestamp")["Outdoor_PM25"].resample("1h").mean().dropna()
+    # Daily rolling averages (3-day)
+    in_daily = pm_main.set_index("Timestamp")["Indoor_PM25"].resample("1D").mean().dropna()
+    out_daily = pm_main.set_index("Timestamp")["Outdoor_PM25"].resample("1D").mean().dropna()
+
+    common_idx = in_daily.index.intersection(out_daily.index)
+    in_daily = in_daily.loc[common_idx]
+    out_daily = out_daily.loc[common_idx]
+
+    in_roll = in_daily.rolling(3, min_periods=1).mean()
+    out_roll = out_daily.rolling(3, min_periods=1).mean()
+
+    fig = go.Figure()
+
+    # Outdoor — filled area
+    fig.add_trace(
+        go.Scatter(
+            x=out_roll.index,
+            y=out_roll.values,
+            mode="lines",
+            name=f"Outdoor (avg {out_daily.mean():.1f} \u03bcg/m\u00b3)",
+            line={"color": COLORS["outdoor"], "width": 2.5},
+            fill="tozeroy",
+            fillcolor="rgba(244,67,54,0.12)",
+            hovertemplate="%{y:.1f} \u03bcg/m\u00b3<extra>Outdoor</extra>",
+        )
     )
 
-    # Align indices
-    common_idx = pm_hourly_indoor.index.intersection(pm_hourly_outdoor.index)
-    pm_hourly_indoor = pm_hourly_indoor.loc[common_idx]
-    pm_hourly_outdoor = pm_hourly_outdoor.loc[common_idx]
-
-    fig, ax = plt.subplots(figsize=(14, 6))
-
-    ax.fill_between(
-        pm_hourly_outdoor.index,
-        pm_hourly_outdoor.values,
-        alpha=0.3,
-        color="#F44336",
-        label=f"Outdoor PM2.5 (avg {pm_hourly_outdoor.mean():.1f} μg/m³)",
-    )
-    ax.plot(
-        pm_hourly_outdoor.index,
-        pm_hourly_outdoor.values,
-        linewidth=0.8,
-        color="#D32F2F",
-        alpha=0.6,
-    )
-
-    ax.fill_between(
-        pm_hourly_indoor.index,
-        pm_hourly_indoor.values,
-        alpha=0.4,
-        color="#4CAF50",
-        label=f"Indoor PM2.5 (avg {pm_hourly_indoor.mean():.1f} μg/m³)",
-    )
-    ax.plot(
-        pm_hourly_indoor.index,
-        pm_hourly_indoor.values,
-        linewidth=0.8,
-        color="#2E7D32",
-        alpha=0.6,
+    # Indoor — filled area
+    fig.add_trace(
+        go.Scatter(
+            x=in_roll.index,
+            y=in_roll.values,
+            mode="lines",
+            name=f"Indoor (avg {in_daily.mean():.1f} \u03bcg/m\u00b3)",
+            line={"color": COLORS["indoor"], "width": 2.5},
+            fill="tozeroy",
+            fillcolor="rgba(76,175,80,0.15)",
+            hovertemplate="%{y:.1f} \u03bcg/m\u00b3<extra>Indoor</extra>",
+        )
     )
 
     # WHO guideline
-    ax.axhline(
+    fig.add_hline(
         y=15,
-        color="#FF9800",
-        linestyle="--",
-        linewidth=1.5,
-        alpha=0.7,
-        label="WHO 24h guideline (15 μg/m³)",
+        line_dash="dash",
+        line_color=COLORS["warn"],
+        annotation_text="WHO 24h guideline (15 \u03bcg/m\u00b3)",
+        annotation_position="top right",
     )
-
-    # Find and annotate worst outdoor day
-    outdoor_daily = pm_main.set_index("Timestamp")["Outdoor_PM25"].resample("1D").mean().dropna()
-    if not outdoor_daily.empty:
-        worst_day = outdoor_daily.idxmax()
-        worst_val = outdoor_daily.max()
-        indoor_on_worst = (
-            pm_main.set_index("Timestamp")["Indoor_PM25"].resample("1D").mean().get(worst_day, 0)
-        )
-
-        if worst_val > 20:
-            ax.annotate(
-                f"Worst day: outdoor {worst_val:.0f} μg/m³\n"
-                f"Indoor stayed at {indoor_on_worst:.0f} μg/m³",
-                xy=(worst_day, worst_val),
-                xytext=(30, 20),
-                textcoords="offset points",
-                fontsize=9,
-                fontweight="bold",
-                color="#D32F2F",
-                arrowprops={"arrowstyle": "->", "color": "#D32F2F"},
-                bbox={
-                    "boxstyle": "round,pad=0.3",
-                    "facecolor": "#FFEBEE",
-                    "edgecolor": "#D32F2F",
-                    "alpha": 0.8,
-                },
-            )
-
-    ax.set_title(
-        "Indoor vs Outdoor PM2.5 — MERV 13 Filtration Protection",
-        fontsize=14,
-        fontweight="bold",
-        pad=15,
-    )
-    ax.set_ylabel("PM2.5 (μg/m³)", fontsize=12)
-    ax.set_xlabel("")
-    ax.legend(loc="upper right", fontsize=9)
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
-    ax.xaxis.set_major_locator(mdates.MonthLocator())
-    ax.grid(axis="y", alpha=0.3)
-    ax.set_ylim(bottom=0)
 
     # Reduction stat
-    if pm_hourly_outdoor.mean() > 0:
-        reduction = (
-            (pm_hourly_outdoor.mean() - pm_hourly_indoor.mean()) / pm_hourly_outdoor.mean()
-        ) * 100
-        ax.annotate(
-            f"Average PM2.5 reduction: {reduction:.0f}%",
-            xy=(0.02, 0.02),
-            xycoords="axes fraction",
-            fontsize=10,
-            fontweight="bold",
-            color="#2E7D32",
-            va="bottom",
+    if out_daily.mean() > 0:
+        reduction = ((out_daily.mean() - in_daily.mean()) / out_daily.mean()) * 100
+        fig.add_annotation(
+            text=f"Average PM2.5 reduction: {reduction:.0f}%",
+            xref="paper",
+            yref="paper",
+            x=0.02,
+            y=0.98,
+            showarrow=False,
+            font={"size": 12, "color": "#2E7D32", "weight": "bold"},
+            xanchor="left",
+            yanchor="top",
         )
 
-    plt.tight_layout()
-    path = os.path.join(OUTPUT_DIR, "indoor_vs_outdoor_pm25.png")
-    fig.savefig(path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
+    fig.update_layout(
+        **LIGHT_LAYOUT,
+        title={
+            "text": "Indoor vs Outdoor PM2.5 — MERV 13 Filtration Protection",
+            "font": {"size": 16},
+        },
+        yaxis_title="PM2.5 (\u03bcg/m\u00b3)",
+        yaxis={"range": [0, max(40, out_roll.max() * 1.2)]},
+        height=500,
+    )
+
+    path = os.path.join(OUTPUT_DIR, "indoor_vs_outdoor_pm25.html")
+    fig.write_html(path, include_plotlyjs="cdn")
     print(f"Saved: {path}")
 
 
 def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    print("=== HVAC Air Quality Visualizations ===\n")
+    print("=== HVAC Air Quality Visualizations (Plotly HTML) ===\n")
     df = fetch_data()
 
     print(f"\nDate range: {df['Timestamp'].min()} to {df['Timestamp'].max()}")

@@ -78,6 +78,8 @@ streamlit run scripts/dashboard.py --server.port 8501
 
 See the [methodology docs](https://minghsuy.github.io/hvac-air-quality-analysis/methodology) for why Spearman over Pearson.
 
+**Interactive charts**: [CO₂ Levels](https://minghsuy.github.io/hvac-air-quality-analysis/charts/co2_bedroom_levels.html) | [Filter Efficiency](https://minghsuy.github.io/hvac-air-quality-analysis/charts/filter_efficiency.html) | [Indoor vs Outdoor PM2.5](https://minghsuy.github.io/hvac-air-quality-analysis/charts/indoor_vs_outdoor_pm25.html)
+
 ## Key Findings
 
 After analyzing 98,000+ readings over 6 months:

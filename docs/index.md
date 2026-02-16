@@ -15,6 +15,12 @@ Three sensors (Airthings View Plus, AirGradient Open Air, AirGradient ONE) colle
 - [Findings](findings.md) — Correlation analysis results, filter longevity, ERV tradeoff
 - [Data Quality](data-quality.md) — Column shift fix, sensor placement, data gap handling
 
+## Interactive Charts
+
+- [CO₂ Bedroom Levels](charts/co2_bedroom_levels.html) — ERV keeps bedrooms below cognitive impairment threshold
+- [Filter Efficiency Over Time](charts/filter_efficiency.html) — MERV 13 lasts 120+ days, not the 45 manufacturers claim
+- [Indoor vs Outdoor PM2.5](charts/indoor_vs_outdoor_pm25.html) — Filtration protection during bad air days
+
 ## Quick Links
 
 - [GitHub Repository](https://github.com/minghsuy/hvac-air-quality-analysis)
