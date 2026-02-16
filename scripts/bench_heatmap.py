@@ -171,7 +171,7 @@ try:
     print(f"  TOTAL:   {t2 - t0:.3f}s")
 except ImportError:
     print("\n--- Method 4: cuDF --- (not installed)")
-    print("  Install: pip install cudf-cu12 (or conda install -c rapidsai cudf)")
+    print("  Install: uv pip install cudf-cu12 (or conda install -c rapidsai cudf)")
 except Exception as e:
     print(f"\n--- Method 4: cuDF --- ERROR: {e}")
 

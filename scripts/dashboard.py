@@ -36,7 +36,7 @@ PLOT_LAYOUT = {
 
 COLORS = {
     "master": "#4A90D9",
-    "son": "#E8744F",
+    "second": "#E8744F",
     "outdoor": "#F44336",
     "indoor": "#4CAF50",
     "threshold": "#D32F2F",
@@ -272,7 +272,7 @@ def page_overview():
     fig = go.Figure()
     for room, color, name in [
         ("master_bedroom", COLORS["master"], "Master"),
-        ("second_bedroom", COLORS["son"], "Son's Room"),
+        ("second_bedroom", COLORS["second"], "Second Bedroom"),
     ]:
         key = (room, "Indoor_CO2")
         if key not in daily:
@@ -329,7 +329,7 @@ def page_co2_compare():
         fig = go.Figure()
         for room, color, name in [
             ("master_bedroom", COLORS["master"], "Master"),
-            ("second_bedroom", COLORS["son"], "Son's Room"),
+            ("second_bedroom", COLORS["second"], "Second Bedroom"),
         ]:
             key = (room, "Indoor_CO2")
             if key not in daily:
@@ -398,7 +398,7 @@ def page_co2_compare():
             "Room",
             ["master_bedroom", "second_bedroom"],
             horizontal=True,
-            format_func=lambda x: "Master" if x == "master_bedroom" else "Son's Room",
+            format_func=lambda x: "Master" if x == "master_bedroom" else "Second Bedroom",
             key="hm_room",
         )
         sub = raw[
@@ -455,7 +455,7 @@ def page_co2_compare():
         fig = go.Figure()
         for room, color, name in [
             ("master_bedroom", COLORS["master"], "Master"),
-            ("second_bedroom", COLORS["son"], "Son's"),
+            ("second_bedroom", COLORS["second"], "Second"),
         ]:
             rd = sub[sub["Room"] == room]
             if rd.empty:
@@ -487,7 +487,7 @@ def page_co2_compare():
         fig = go.Figure()
         for room, color, name in [
             ("master_bedroom", COLORS["master"], "Master"),
-            ("second_bedroom", COLORS["son"], "Son's Room"),
+            ("second_bedroom", COLORS["second"], "Second Bedroom"),
         ]:
             key = (room, "Indoor_CO2")
             if key not in hourly:
@@ -698,7 +698,7 @@ def page_heatmaps():
             "Room",
             ["master_bedroom", "second_bedroom"],
             horizontal=True,
-            format_func=lambda x: "Master" if x == "master_bedroom" else "Son's Room",
+            format_func=lambda x: "Master" if x == "master_bedroom" else "Second Bedroom",
             key="hm_r",
         )
     else:
@@ -763,7 +763,7 @@ def page_heatmaps():
                 y=we.values,
                 mode="lines+markers",
                 name="Weekend",
-                line={"color": COLORS["son"], "width": 2.5, "dash": "dash"},
+                line={"color": COLORS["second"], "width": 2.5, "dash": "dash"},
                 marker={"size": 5},
             )
         )
@@ -903,6 +903,9 @@ def page_filter_pm25():
             return
         out_d = filter_daily(daily[out_key], dr)["mean"].rolling(3, min_periods=1).mean().dropna()
         in_d = filter_daily(daily[in_key], dr)["mean"].rolling(3, min_periods=1).mean().dropna()
+        if out_d.empty or in_d.empty:
+            st.info("No PM2.5 data in selected range")
+            return
 
         fig = go.Figure()
         fig.add_trace(
@@ -959,7 +962,7 @@ def page_environment():
         "Room",
         ["master_bedroom", "second_bedroom"],
         horizontal=True,
-        format_func=lambda x: "Master" if x == "master_bedroom" else "Son's Room",
+        format_func=lambda x: "Master" if x == "master_bedroom" else "Second Bedroom",
         key="env_room",
     )
 
@@ -1349,6 +1352,9 @@ def page_correlations():
 
         # Downsample for performance — daily averages
         sub = sub.set_index("Timestamp")[[x_col, y_col]].resample("1D").mean().dropna()
+        if len(sub) < 2:
+            st.info("Not enough data after daily aggregation")
+            return
 
         fig = go.Figure()
         fig.add_trace(
@@ -1439,7 +1445,7 @@ def page_correlations():
                 y=pm_roll.values,
                 mode="lines",
                 name="Indoor PM2.5 (7d avg)",
-                line={"color": COLORS["son"], "width": 2.5},
+                line={"color": COLORS["second"], "width": 2.5},
             ),
             secondary_y=True,
         )
@@ -1491,7 +1497,9 @@ def page_voc_nox():
         "Room",
         ["master_bedroom", "second_bedroom"],
         horizontal=True,
-        format_func=lambda x: "Master" if x == "master_bedroom" else "Son's Room (near kitchen)",
+        format_func=lambda x: "Master"
+        if x == "master_bedroom"
+        else "Second Bedroom (near kitchen)",
         key="vn_room",
     )
 
@@ -1565,7 +1573,7 @@ def page_voc_nox():
                     y=by_hour["mean"],
                     mode="lines+markers",
                     name=metric.replace("Indoor_", ""),
-                    line={"color": COLORS["master"] if i == 0 else COLORS["son"], "width": 2.5},
+                    line={"color": COLORS["master"] if i == 0 else COLORS["second"], "width": 2.5},
                     marker={"size": 5},
                 ),
                 row=1,
@@ -1611,7 +1619,7 @@ def page_voc_nox():
             r_mean = d["mean"].rolling(7, min_periods=1).mean()
             r_min = d["min"].rolling(7, min_periods=1).min()
             r_max = d["max"].rolling(7, min_periods=1).max()
-            color = COLORS["master"] if i == 0 else COLORS["son"]
+            color = COLORS["master"] if i == 0 else COLORS["second"]
             hex_c = color
             rgba = f"rgba({int(hex_c[1:3], 16)},{int(hex_c[3:5], 16)},{int(hex_c[5:7], 16)},0.12)"
 
