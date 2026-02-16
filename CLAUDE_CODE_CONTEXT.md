@@ -58,7 +58,7 @@ Sensors → Python (DGX Spark) → Google Sheets → Apps Script
 |--------|----------|------------------|-----|
 | Airthings View Plus | Master Bedroom | PM2.5, CO2, VOC, radon, temp, humidity | OAuth2 cloud API |
 | AirGradient Open Air | Outdoor (balcony) | PM2.5, CO2, VOC, NOX, temp, humidity | Local mDNS |
-| AirGradient ONE | Son's Bedroom | PM2.5, CO2, VOC, NOX, temp, humidity | Local mDNS |
+| AirGradient ONE | Second Bedroom | PM2.5, CO2, VOC, NOX, temp, humidity | Local mDNS |
 | Temp Stick WiFi | Attic (near ERV/air handler) | Temperature, humidity | REST API (cloud) |
 
 ## HVAC System

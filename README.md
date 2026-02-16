@@ -15,7 +15,7 @@ My family has asthma. After noticing symptoms correlating with degraded HVAC fil
 
 ## The Solution
 
-6+ months of continuous monitoring with **82,791 sensor readings** revealed:
+6+ months of continuous monitoring with **98,000+ sensor readings** revealed:
 
 | What Manufacturer Says | What Data Shows |
 |------------------------|-----------------|
@@ -58,9 +58,29 @@ Efficiency = ((Outdoor PM2.5 - Indoor PM2.5) / Outdoor PM2.5) × 100%
 
 This is why indoor-only monitoring fails: if outdoor air is clean, even a failing filter looks effective.
 
+## Dashboard
+
+An interactive Streamlit dashboard makes the data explorable:
+
+```bash
+# Run the dashboard
+streamlit run scripts/dashboard.py --server.port 8501
+```
+
+> **Prerequisites**: The dashboard requires a configured `.env` file (with `GOOGLE_SPREADSHEET_ID` and `GOOGLE_SHEET_TAB`), a valid `google-credentials.json` service account file, and an active Google Sheet with sensor data. See [Configuration](#configuration) for setup.
+
+**7 pages**: Overview, CO2 Compare, Heatmaps, VOC & NOX, Filter & PM2.5, Environment, Correlations
+
+- Spearman rank correlation matrix for all 14 metrics
+- LOWESS anomaly detection for CO2 trend analysis
+- Heatmaps for every metric (hour x date, weekday vs weekend, monthly profiles)
+- Parquet cache: 18ms load vs 3.5s Google Sheets API (106x faster)
+
+See the [methodology docs](https://minghsuy.github.io/hvac-air-quality-analysis/methodology) for why Spearman over Pearson.
+
 ## Key Findings
 
-After analyzing 82,791 readings over 6 months:
+After analyzing 98,000+ readings over 6 months:
 
 1. **MERV 13 filters maintain >85% efficiency for 120+ days** (not 45 days as marketed)
 2. **Load-based predictions don't work** - a filter at 197% of "max life" still performed at 87.3% efficiency
@@ -136,6 +156,7 @@ The Google Apps Script (`HVACMonitor_v3.gs`) provides:
 
 ## Documentation
 
+- [GitHub Pages — Methodology & Findings](https://minghsuy.github.io/hvac-air-quality-analysis/) - Dashboard architecture, statistical methodology, correlation findings
 - [Data Dictionary](DATA_DICTIONARY.md) - Field definitions and units
 - [Troubleshooting Guide](TROUBLESHOOTING.md) - Common issues and solutions
 - [Project Wiki](https://github.com/minghsuy/hvac-air-quality-analysis/wiki) - Detailed analysis and results

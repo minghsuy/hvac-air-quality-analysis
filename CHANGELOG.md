@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Interactive Streamlit dashboard with 7 pages: Overview, CO2 Compare, Heatmaps, VOC & NOX, Filter & PM2.5, Environment, Correlations (`scripts/dashboard.py`)
+- Parquet cache for dashboard data (18ms read vs 3.5s Sheets API — 106x faster)
+- 3-layer caching: Parquet on disk (1hr TTL), session state, pre-aggregated hourly/daily dicts
+- Spearman rank correlation matrix for all 14 air quality metrics
+- LOWESS anomaly detection for CO2 trend analysis (frac=0.08, 1.5x std threshold)
+- 4 CO2 visualization styles: rolling avg + band, heatmap, weekly box plots, LOWESS + anomalies
+- Heatmaps for all 14 metrics organized by Indoor Air / Outdoor / Comfort categories
+- Weekday vs weekend and monthly hourly profile charts
+- ERV tradeoff visualization (CO2 vs PM2.5 dual-axis chart)
+- Outdoor-to-indoor scatter plots with Spearman and Pearson correlation display
+- VOC & NOX analysis page with indoor vs outdoor comparison, daily patterns, and trends
+- Performance benchmark script (`scripts/bench_heatmap.py`) — Sheets vs Parquet vs Polars vs cuDF
+- Static chart generator for README/LinkedIn images (`scripts/create_visualizations.py`)
+- GitHub Pages documentation site with methodology, architecture, and findings
+- Column shift fix for pre-September 2025 data (17-col vs 18-col rows)
 - Temp Stick WiFi sensor integration for attic temperature/humidity monitoring
 - `get_tempstick_data()` with graceful failure (optional sensor, silently skipped if not configured)
 - `build_air_quality_row()` and `build_temp_only_row()` helpers to eliminate row construction duplication

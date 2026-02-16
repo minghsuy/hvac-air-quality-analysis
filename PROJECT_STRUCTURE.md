@@ -9,8 +9,14 @@
 └── google-credentials.json        # Service account credentials (gitignored)
 ```
 
-### Analysis & Visualization
+### Dashboard & Analysis
 ```
+├── scripts/
+│   ├── dashboard.py               # Multi-page Streamlit dashboard (7 pages)
+│   ├── bench_heatmap.py           # Performance benchmark (Sheets vs Parquet vs Polars)
+│   └── create_visualizations.py   # Static PNG chart generator
+├── images/                         # Generated visualization PNGs
+├── .cache/                         # Parquet data cache (gitignored)
 ├── analyze_historical.py          # Historical data analyzer
 ├── analysis.ipynb                 # Jupyter notebook for interactive analysis
 └── data/                          # Data storage (gitignored)
@@ -54,7 +60,13 @@
 ├── docs/
 │   ├── ARCHITECTURE.md          # System design and data flow
 │   ├── LESSONS_LEARNED.md       # Key insights from deployment
-│   └── 5_MINUTE_INTERVALS.md    # Why we use 5-minute collection
+│   ├── 5_MINUTE_INTERVALS.md    # Why we use 5-minute collection
+│   ├── _config.yml              # GitHub Pages Jekyll config
+│   ├── index.md                 # GitHub Pages landing page
+│   ├── dashboard-architecture.md # Dashboard design and caching
+│   ├── methodology.md           # Statistical methodology (Spearman, LOWESS)
+│   ├── findings.md              # Correlation analysis results
+│   └── data-quality.md          # Data engineering fixes
 └── RELEASE_CHECKLIST.md         # Release process documentation
 ```
 

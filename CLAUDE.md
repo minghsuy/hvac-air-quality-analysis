@@ -113,6 +113,15 @@ python collect_with_sheets_api_v2.py
 python scripts/update_airgradient_ips.py
 ```
 
+### Dashboard
+```bash
+# Run dashboard (port 8501)
+streamlit run scripts/dashboard.py --server.port 8501
+
+# Parquet cache at .cache/air_quality.parquet (18ms vs 3.5s Sheets API)
+# Use Spearman correlation for sensor data (robust to outliers, non-linear)
+```
+
 ## 🔍 Quick Fixes for Common Issues
 
 | Issue | Solution |
