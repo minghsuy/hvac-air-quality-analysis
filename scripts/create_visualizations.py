@@ -23,8 +23,21 @@ load_dotenv()
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "images")
 
 
+CACHE_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), ".cache", "air_quality.parquet"
+)
+
+
 def fetch_data():
-    """Fetch air quality data from Google Sheets."""
+    """Fetch air quality data from Parquet cache or Google Sheets."""
+    if os.path.exists(CACHE_PATH):
+        print(f"Reading from Parquet cache: {CACHE_PATH}")
+        df = pd.read_parquet(CACHE_PATH)
+        df = df.dropna(subset=["Timestamp"]).sort_values("Timestamp")
+        print(f"Loaded {len(df):,} rows from cache")
+        return df
+
+    print("No Parquet cache found, fetching from Google Sheets...")
     spreadsheet_id = os.getenv("GOOGLE_SPREADSHEET_ID")
     sheet_tab = os.getenv("GOOGLE_SHEET_TAB", "")
 
