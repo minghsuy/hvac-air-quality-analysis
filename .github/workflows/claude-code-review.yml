@@ -3,21 +3,9 @@ name: Claude Code Review
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
-
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -36,9 +24,33 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-          plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
+          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
+          prompt: |
+            Review PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
 
+            First, read the CLAUDE.md file in the repo root for project conventions.
+            Then review the PR diff using `gh pr diff ${{ github.event.pull_request.number }}`.
+
+            **Project: hvac-air-quality-analysis** — HVAC and air quality sensor data analysis.
+
+            ## Critical Checks
+            1. **Sensor data validation** — Input data must be bounds-checked. Reject or flag physically impossible readings (negative humidity, CO2 below 400 ppm ambient, etc.).
+            2. **Unit conversions** — Temperature (F/C/K), pressure, concentration units must be explicit and correct. No implicit unit assumptions.
+            3. **Time series handling** — Timezone-aware timestamps, correct resampling/interpolation, no silent gaps in data.
+            4. **Data integrity** — No silent NaN propagation. Missing data handling must be explicit (drop, fill, interpolate).
+
+            ## Standard Review Areas
+            - Correct use of pandas/numpy for time series operations
+            - Plot labels, units, and axis scales
+            - Test coverage for new/changed behavior
+            - No hardcoded file paths or credentials
+
+            ## Output Format
+            Categorize each finding:
+            - :red_circle: **BLOCKING** — Must fix before merge (bugs, security, data correctness)
+            - :yellow_circle: **SHOULD FIX** — Strong recommendation (code quality, edge cases)
+            - :green_circle: **SUGGESTION** — Nice to have (style, minor improvements)
+
+            If the PR looks good, say so briefly.
+
+            Use `gh pr comment ${{ github.event.pull_request.number }}` with your Bash tool to leave your review as a comment on the PR.
