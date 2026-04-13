@@ -25,15 +25,11 @@ env/
 # UV
 .venv/
 
-# Jupyter
+# Jupyter — keep analysis local, commit scripts instead
 .ipynb_checkpoints/
 *.ipynb_checkpoints
-
-# Private/local analysis notebooks
-local-analysis*.ipynb
-private-analysis*.ipynb
-*-local.ipynb
-*-private.ipynb
+*.ipynb
+!local-analysis-template.ipynb
 
 # Data files (contain personal data)
 data/
