@@ -17,7 +17,6 @@
 │   └── create_visualizations.py   # Interactive Plotly HTML chart generator
 ├── .cache/                         # Parquet data cache (gitignored)
 ├── analyze_historical.py          # Historical data analyzer
-├── analysis.ipynb                 # Jupyter notebook for interactive analysis
 └── data/                          # Data storage (gitignored)
     ├── *.csv                      # Airthings exports
     └── figures/                   # Generated visualizations
