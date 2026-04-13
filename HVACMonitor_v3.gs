@@ -88,6 +88,16 @@ const CONFIG = {
     cooldownMinutes: 60,  // Don't re-alert within this window
   },
 
+  // ERV/HRV unit specs (attic-installed)
+  ERV: {
+    maxOperatingTemp: 40,  // °C - max ambient temp for safe operation
+  },
+
+  // Nighttime zone control
+  NIGHT_TEMP: {
+    maxSpread: 3,          // °C - spread above this flags zone damper issues
+  },
+
   // Location defaults (override via Script Properties)
   LOCATION_DEFAULTS: {
     latitude: 37.35,
@@ -785,6 +795,243 @@ function average(arr) {
   return arr.reduce((a, b) => a + b, 0) / arr.length;
 }
 
+function extractValid(rows, colIdx, min, max) {
+  const floor = min !== undefined ? min : -Infinity;
+  const ceil = max !== undefined ? max : Infinity;
+  const vals = [];
+  for (let i = 0; i < rows.length; i++) {
+    const v = parseFloat(rows[i][colIdx]);
+    if (!isNaN(v) && v >= floor && v <= ceil) vals.push(v);
+  }
+  return vals;
+}
+
+// ============================================================================
+// WEEKLY DATA HELPERS
+// ============================================================================
+
+/**
+ * Load one full week of sheet data in a single read.
+ * Returns array of rows filtered to the last 7 days, or null if empty.
+ */
+function getWeeklyData() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME);
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return null;
+
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  // Sheet may have stale data past the current collector's write position.
+  // Read timestamp column to find the actual last row with recent data.
+  const allTimestamps = sheet.getRange(1, 1, lastRow, 1).getValues();
+  let actualLastRow = 0;
+  for (let i = allTimestamps.length - 1; i >= 0; i--) {
+    const ts = allTimestamps[i][0];
+    if (!ts) continue;
+    const d = ts instanceof Date ? ts : new Date(String(ts).replace(' ', 'T'));
+    if (!isNaN(d.getTime()) && d >= sevenDaysAgo) {
+      actualLastRow = i + 1; // 1-based
+      break;
+    }
+  }
+  if (actualLastRow <= 1) return null;
+
+  // Now find the first row within 7 days (search forward from estimated start)
+  let firstRow = Math.max(2, actualLastRow - 6700);
+  for (let i = firstRow - 1; i < actualLastRow; i++) {
+    const ts = allTimestamps[i][0];
+    if (!ts) continue;
+    const d = ts instanceof Date ? ts : new Date(String(ts).replace(' ', 'T'));
+    if (!isNaN(d.getTime()) && d >= sevenDaysAgo) {
+      firstRow = i + 1; // 1-based
+      break;
+    }
+  }
+
+  const numRows = actualLastRow - firstRow + 1;
+  if (numRows <= 0) return null;
+
+  const data = sheet.getRange(firstRow, 1, numRows, 18).getValues();
+
+  // Parse timestamps consistently for downstream consumers
+  const filtered = data.filter(r => {
+    const ts = r[COLS.TIMESTAMP];
+    if (!ts) return false;
+    const d = ts instanceof Date ? ts : new Date(String(ts).replace(' ', 'T'));
+    return !isNaN(d.getTime()) && d >= sevenDaysAgo;
+  });
+  return filtered.length > 0 ? filtered : null;
+}
+
+/**
+ * Compute 7-day min/avg/max for key metrics from weekly sheet data.
+ * Filters by room to avoid double-counting sensor-specific columns.
+ */
+function computeWeeklyTrends(weekData) {
+  if (!weekData || weekData.length === 0) return null;
+
+  function stats(arr) {
+    if (arr.length === 0) return null;
+    const sorted = arr.slice().sort((a, b) => a - b);
+    return {
+      min: sorted[0],
+      max: sorted[sorted.length - 1],
+      avg: average(arr),
+      median: median(arr),
+      count: arr.length,
+    };
+  }
+
+  // Bedroom rows: master_bedroom + second_bedroom (have PM2.5, CO2, VOC)
+  const bedroomRows = weekData.filter(r => {
+    const room = String(r[COLS.ROOM]).toLowerCase();
+    return room.includes('master') || room.includes('second');
+  });
+
+  // Master only: has radon (Airthings)
+  const masterRows = weekData.filter(r =>
+    String(r[COLS.ROOM]).toLowerCase().includes('master')
+  );
+
+  // Second bedroom only: has outdoor PM2.5 (AirGradient)
+  const secondRows = weekData.filter(r =>
+    String(r[COLS.ROOM]).toLowerCase().includes('second')
+  );
+
+  // Attic rows: temp/humidity only (Temp Stick)
+  const atticRows = weekData.filter(r =>
+    String(r[COLS.ROOM]).toLowerCase().includes('attic')
+  );
+
+  // Nighttime master bedroom temp (11pm-7am) — per-night spread detects zone issues
+  // Group by night (date key = date of the evening, so 11pm Sun + 1-6am Mon = "Sun night")
+  const nightsByDate = {};
+  for (let i = 0; i < masterRows.length; i++) {
+    const ts = masterRows[i][COLS.TIMESTAMP];
+    const d = ts instanceof Date ? ts : new Date(String(ts).replace(' ', 'T'));
+    if (!isNaN(d.getTime())) {
+      const hour = d.getHours();
+      if (hour >= 23 || hour < 7) {
+        const temp = parseFloat(masterRows[i][COLS.INDOOR_TEMP]);
+        if (!isNaN(temp) && temp >= -40 && temp <= 50) {
+          // Normalize: 1am Mon belongs to "Sun night"
+          const nightDate = hour < 7
+            ? new Date(d.getTime() - 12 * 3600000).toDateString()
+            : d.toDateString();
+          if (!nightsByDate[nightDate]) nightsByDate[nightDate] = [];
+          nightsByDate[nightDate].push(temp);
+        }
+      }
+    }
+  }
+  // Compute per-night spreads, then take the median spread across the week
+  const nightSpreads = [];
+  const nightAvgs = [];
+  Object.values(nightsByDate).forEach(temps => {
+    if (temps.length >= 3) { // need enough readings for meaningful spread
+      nightSpreads.push(Math.max.apply(null, temps) - Math.min.apply(null, temps));
+      nightAvgs.push(average(temps));
+    }
+  });
+  const nightTempAvg = nightAvgs.length > 0 ? average(nightAvgs) : null;
+  const nightSpreadMedian = nightSpreads.length > 0 ? median(nightSpreads) : null;
+
+  // Attic ERV exceedance: count hours and days above max operating temp
+  const atticTemps = extractValid(atticRows, COLS.INDOOR_TEMP, -40, 80);
+  let ervExceedanceHours = 0;
+  let ervExceedanceDays = 0;
+  if (atticTemps.length > 0) {
+    const exceedanceDates = new Set();
+    let exceedanceReadings = 0;
+    for (let i = 0; i < atticRows.length; i++) {
+      const temp = parseFloat(atticRows[i][COLS.INDOOR_TEMP]);
+      if (!isNaN(temp) && temp >= CONFIG.ERV.maxOperatingTemp && temp <= 80) {
+        exceedanceReadings++;
+        const ts = atticRows[i][COLS.TIMESTAMP];
+        const d = ts instanceof Date ? ts : new Date(String(ts).replace(' ', 'T'));
+        if (!isNaN(d.getTime())) exceedanceDates.add(d.toDateString());
+      }
+    }
+    // Estimate hours from actual sensor span, not full 7 days
+    const atticTimestamps = atticRows
+      .map(r => { const ts = r[COLS.TIMESTAMP]; return ts instanceof Date ? ts : new Date(String(ts).replace(' ', 'T')); })
+      .filter(d => !isNaN(d.getTime()));
+    const spanHours = atticTimestamps.length >= 2
+      ? (Math.max.apply(null, atticTimestamps) - Math.min.apply(null, atticTimestamps)) / 3600000
+      : 7 * 24;
+    const readingsPerHour = atticTemps.length / Math.max(spanHours, 1);
+    ervExceedanceHours = Math.round(exceedanceReadings / readingsPerHour);
+    ervExceedanceDays = exceedanceDates.size;
+  }
+
+  return {
+    indoorPM: stats(extractValid(bedroomRows, COLS.INDOOR_PM25, 0, 1000)),
+    co2: stats(extractValid(bedroomRows, COLS.INDOOR_CO2, 400, 10000)),
+    nightTempAvg: nightTempAvg,
+    nightSpreadMedian: nightSpreadMedian,
+    nightCount: Object.keys(nightsByDate).length,
+    atticTemp: stats(atticTemps),
+    humidity: stats(extractValid(bedroomRows, COLS.INDOOR_HUMIDITY, 0, 100)),
+    radon: stats(extractValid(masterRows, COLS.INDOOR_RADON, 0, 3700)),
+    outdoorPM: stats(extractValid(secondRows, COLS.OUTDOOR_PM25, 0, 1000)),
+    ervExceedanceHours: ervExceedanceHours,
+    ervExceedanceDays: ervExceedanceDays,
+  };
+}
+
+/**
+ * Week-scoped efficiency analysis. Same thresholds as checkEfficiency() but
+ * looks at 7 days instead of 4 hours. Falls back to absolute indoor PM2.5
+ * as a proxy when outdoor air is too clean for relative measurement.
+ */
+function computeWeeklyEfficiency(weekData) {
+  if (!weekData || weekData.length === 0) return { type: 'no_data' };
+
+  const thresholds = getEfficiencyThresholds();
+
+  // Same reliability filter as checkEfficiency(), but with explicit NaN guard
+  const reliable = weekData.filter(r => {
+    const outdoor = parseFloat(r[COLS.OUTDOOR_PM25]);
+    const indoor = parseFloat(r[COLS.INDOOR_PM25]);
+    return !isNaN(outdoor) && !isNaN(indoor) && outdoor >= thresholds.minOutdoorPM && indoor <= outdoor;
+  });
+
+  if (reliable.length >= 5) {
+    const efficiencies = reliable
+      .map(r => parseFloat(r[COLS.FILTER_EFFICIENCY]))
+      .filter(v => !isNaN(v) && v >= 0 && v <= 100);
+    if (efficiencies.length === 0) return { type: 'no_data' };
+    const medianEff = median(efficiencies);
+    const status = medianEff >= thresholds.changeFilter ? 'Good' :
+                   medianEff >= thresholds.critical ? 'Change soon' : 'Change now';
+    return {
+      type: 'measured',
+      medianEfficiency: medianEff,
+      readingCount: efficiencies.length,
+      status: status,
+      thresholds: thresholds,
+    };
+  }
+
+  // Fallback: use absolute indoor PM2.5 as proxy
+  const bedroomRows = weekData.filter(r => {
+    const room = String(r[COLS.ROOM]).toLowerCase();
+    return room.includes('master') || room.includes('second');
+  });
+  const indoorPMValues = extractValid(bedroomRows, COLS.INDOOR_PM25, 0, 1000);
+
+  if (indoorPMValues.length === 0) return { type: 'no_data' };
+
+  return {
+    type: 'proxy',
+    avgIndoorPM: average(indoorPMValues),
+    maxIndoorPM: Math.max(...indoorPMValues),
+    readingCount: indoorPMValues.length,
+    reliableCount: reliable.length,
+    thresholds: thresholds,
+  };
+}
+
 // ============================================================================
 // WEEKLY REPORT
 // ============================================================================
@@ -797,54 +1044,153 @@ function weeklyReport() {
   const location = getLocation();
   const filters = getFiltersFromSheet();
   const pressure = checkPressure();
-  const aqi = checkOutdoorAQI();
-  const efficiency = checkEfficiency();
+  const weekData = getWeeklyData();
+  const trends = computeWeeklyTrends(weekData);
+  const efficiency = computeWeeklyEfficiency(weekData);
 
   let body = `📊 Weekly HVAC Report - ${location.name}\n`;
   body += '═'.repeat(50) + '\n\n';
 
-  // Filter Efficiency - THE KEY METRIC
-  body += '📈 FILTER EFFICIENCY (the "change filter" signal)\n';
-  body += '─'.repeat(40) + '\n';
-  if (efficiency.medianEfficiency) {
-    const status = efficiency.medianEfficiency >= 75 ? '✅ Good' :
-                   efficiency.medianEfficiency >= 65 ? '⚠️ Change soon' : '🚨 Change now';
-    body += `Current: ${efficiency.medianEfficiency.toFixed(0)}% - ${status}\n`;
-    body += `Based on ${efficiency.readingCount} reliable readings\n`;
-  } else {
-    body += 'Outdoor air too clean for reliable measurement this week\n';
-  }
-
-  // Filter Ages
-  body += '\n🔧 FILTER STATUS\n';
-  body += '─'.repeat(40) + '\n';
+  // Precompute filter ages (used in both alerts and filter status sections)
+  const filterAges = {};
   Object.entries(filters).forEach(([name, f]) => {
     if (f.lastChanged) {
       const days = Math.floor((new Date() - f.lastChanged) / (1000 * 60 * 60 * 24));
       const isZone = name.includes('zone');
-      if (isZone) {
-        const maxDays = CONFIG.ZONE_FILTER_DAYS[name] || 90;
-        const remaining = maxDays - days;
-        body += `${name}: ${days} days (${remaining > 0 ? remaining + ' days until replace' : 'REPLACE NOW'})\n`;
-      } else {
-        body += `${name}: ${days} days (efficiency-based alerts)\n`;
-      }
+      const maxDays = isZone ? (CONFIG.ZONE_FILTER_DAYS[name] || 90) : null;
+      filterAges[name] = { days, isZone, maxDays };
     }
   });
 
-  // Pressure
+  // --- Status summary (Problem 4) ---
+  const alerts = [];
+  if (efficiency.type === 'measured' && efficiency.medianEfficiency < efficiency.thresholds.changeFilter) {
+    alerts.push(`Filter efficiency ${efficiency.medianEfficiency.toFixed(0)}% (below ${efficiency.thresholds.changeFilter}%)`);
+  } else if (efficiency.type === 'proxy' && efficiency.avgIndoorPM >= 12) { // EPA 24-hr PM2.5 "Good" limit
+    alerts.push(`Indoor PM2.5 elevated: avg ${efficiency.avgIndoorPM.toFixed(1)} μg/m³ — check filters`);
+  }
+  if (pressure.alerts && pressure.alerts.length > 0) {
+    pressure.alerts.forEach(a => alerts.push(a.message ?? String(a)));
+  }
+  Object.entries(filterAges).forEach(([name, info]) => {
+    if (info.isZone && info.days > info.maxDays) {
+      alerts.push(`${name} overdue (${info.days - info.maxDays} days past)`);
+    }
+  });
+  if (trends && trends.ervExceedanceDays > 0) {
+    alerts.push(`HRV above operating limit: ${trends.ervExceedanceDays} days, ~${trends.ervExceedanceHours}h above ${CONFIG.ERV.maxOperatingTemp}°C`);
+  }
+
+  if (alerts.length === 0) {
+    body += 'STATUS: All Clear\n';
+    body += 'No alerts this week. All systems operating normally.\n\n';
+  } else {
+    body += `STATUS: ${alerts.length} alert(s) this week\n`;
+    alerts.forEach(a => { body += `  - ${a}\n`; });
+    body += '\n';
+  }
+
+  // --- Weekly Trends (Problem 5) ---
+  body += '📊 WEEKLY TRENDS (7 days)\n';
+  body += '─'.repeat(40) + '\n';
+  if (trends) {
+    if (trends.indoorPM) {
+      body += `Indoor PM2.5: avg ${trends.indoorPM.avg.toFixed(1)}, range ${trends.indoorPM.min.toFixed(1)}-${trends.indoorPM.max.toFixed(1)} μg/m³\n`;
+    }
+    if (trends.co2) {
+      body += `CO2:          avg ${trends.co2.avg.toFixed(0)}, max ${trends.co2.max.toFixed(0)} ppm\n`;
+    }
+    if (trends.nightSpreadMedian !== null) {
+      body += `Night Temp:   avg ${trends.nightTempAvg.toFixed(1)} °C, ${trends.nightSpreadMedian.toFixed(1)}° typical spread (11pm-7am, ${trends.nightCount} nights)\n`;
+      if (trends.nightSpreadMedian > CONFIG.NIGHT_TEMP.maxSpread) {
+        body += `              ⚠️ wide overnight spread — check zone dampers/sensors\n`;
+      }
+    }
+    if (trends.humidity) {
+      body += `Humidity:     ${trends.humidity.min.toFixed(0)}-${trends.humidity.max.toFixed(0)}%\n`;
+    }
+    if (trends.radon) {
+      body += `Radon:        avg ${trends.radon.avg.toFixed(0)} Bq/m³\n`;
+    }
+    if (trends.atticTemp) {
+      body += `Attic:        ${trends.atticTemp.min.toFixed(1)}-${trends.atticTemp.max.toFixed(1)} °C`;
+      if (trends.atticTemp.max >= CONFIG.ERV.maxOperatingTemp) {
+        body += ` ⚠️ peak exceeds HRV limit`;
+      }
+      body += '\n';
+      if (trends.ervExceedanceDays > 0) {
+        body += `              ${trends.ervExceedanceDays} days, ~${trends.ervExceedanceHours}h above ${CONFIG.ERV.maxOperatingTemp}°C\n`;
+      }
+    }
+  } else {
+    body += 'Insufficient data for trends\n';
+  }
+
+  // --- Filter Efficiency (Problem 1) ---
+  body += '\n📈 FILTER EFFICIENCY\n';
+  body += '─'.repeat(40) + '\n';
+  if (efficiency.type === 'measured') {
+    const icons = { 'Good': '✅ Good', 'Change soon': '⚠️ Change soon', 'Change now': '🚨 Change now' };
+    const icon = icons[efficiency.status] || efficiency.status;
+    body += `Measured: ${efficiency.medianEfficiency.toFixed(0)}% - ${icon}\n`;
+    body += `Based on ${efficiency.readingCount} reliable readings this week\n`;
+  } else if (efficiency.type === 'proxy') {
+    body += 'Outdoor air too clean for relative efficiency measurement\n';
+    body += `Indoor PM2.5 proxy: avg ${efficiency.avgIndoorPM.toFixed(1)}, max ${efficiency.maxIndoorPM.toFixed(1)} μg/m³\n`;
+    if (efficiency.avgIndoorPM < 5) {
+      body += 'Filters working well (indoor air is clean)\n';
+    } else if (efficiency.avgIndoorPM < 12) {
+      body += 'Indoor levels moderate - monitor next week\n';
+    } else {
+      body += 'Indoor levels elevated - check filters\n';
+    }
+    if (efficiency.reliableCount > 0) {
+      body += `(${efficiency.reliableCount} readings met outdoor threshold but fewer than 5 needed)\n`;
+    }
+  } else {
+    body += 'No efficiency data available\n';
+  }
+
+  // --- Filter Ages ---
+  body += '\n🔧 FILTER STATUS\n';
+  body += '─'.repeat(40) + '\n';
+  Object.entries(filterAges).forEach(([name, info]) => {
+    if (info.isZone) {
+      const remaining = info.maxDays - info.days;
+      body += `${name}: ${info.days} days (${remaining > 0 ? remaining + ' days until replace' : 'REPLACE NOW'})\n`;
+    } else {
+      body += `${name}: ${info.days} days (efficiency-based alerts)\n`;
+    }
+  });
+
+  // --- Pressure (Problem 2) ---
   body += '\n🌡️ PRESSURE (for nerve pain tracking)\n';
   body += '─'.repeat(40) + '\n';
   if (pressure.current) {
     body += `Current: ${pressure.current.toFixed(0)} hPa\n`;
+    if (pressure.alerts && pressure.alerts.length > 0) {
+      pressure.alerts.forEach(a => { body += `${a.message ?? String(a)}\n`; });
+    } else {
+      body += 'Stable this week\n';
+    }
+  } else {
+    body += 'Unavailable (weather API error)\n';
   }
 
-  // Outdoor AQI
+  // --- Outdoor Air Quality (Problem 3) ---
   body += '\n🌬️ OUTDOOR AIR (for ERV control)\n';
   body += '─'.repeat(40) + '\n';
-  if (aqi.current) {
-    body += `Current PM2.5: ${aqi.current.toFixed(1)} μg/m³\n`;
-    body += `ERV recommendation: ${aqi.state || 'NORMAL'}\n`;
+  if (trends && trends.outdoorPM) {
+    body += `Weekly PM2.5: avg ${trends.outdoorPM.avg.toFixed(1)}, max ${trends.outdoorPM.max.toFixed(1)} μg/m³\n`;
+    if (trends.outdoorPM.avg < 12) {
+      body += 'Excellent air quality - safe for ERV\n';
+    } else if (trends.outdoorPM.avg < 25) {
+      body += 'Moderate air quality - ERV operation normal\n';
+    } else {
+      body += 'Elevated outdoor PM2.5 this week\n';
+    }
+  } else {
+    body += 'No outdoor PM2.5 data this week\n';
   }
 
   body += '\n' + '═'.repeat(50);
