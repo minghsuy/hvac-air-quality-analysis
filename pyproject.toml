@@ -24,6 +24,7 @@ dependencies = [
     "pytz>=2025.2",
     "streamlit>=1.41.0",
     "statsmodels>=0.14.4",
+    "pyarrow>=18.0.0",
 ]
 
 [project.scripts]
