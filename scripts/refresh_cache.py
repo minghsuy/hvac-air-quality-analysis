@@ -30,16 +30,32 @@ EXPECTED_COLS = 18
 SHEET_RANGE = "A:R"
 
 NUMERIC_COLS = [
-    "Indoor_PM25", "Outdoor_PM25", "Filter_Efficiency",
-    "Indoor_CO2", "Outdoor_CO2",
-    "Indoor_VOC", "Indoor_NOX", "Indoor_Temp", "Indoor_Humidity", "Indoor_Radon",
-    "Outdoor_Temp", "Outdoor_Humidity", "Outdoor_VOC", "Outdoor_NOX",
+    "Indoor_PM25",
+    "Outdoor_PM25",
+    "Filter_Efficiency",
+    "Indoor_CO2",
+    "Outdoor_CO2",
+    "Indoor_VOC",
+    "Indoor_NOX",
+    "Indoor_Temp",
+    "Indoor_Humidity",
+    "Indoor_Radon",
+    "Outdoor_Temp",
+    "Outdoor_Humidity",
+    "Outdoor_VOC",
+    "Outdoor_NOX",
 ]
 # Columns whose positions shifted when the schema went from 17 to 18 cols.
 # For rows with len(row) < EXPECTED_COLS, these values are unreliable.
 SHIFTED_COLS = [
-    "Indoor_Temp", "Indoor_Humidity", "Indoor_Radon",
-    "Outdoor_CO2", "Outdoor_Temp", "Outdoor_Humidity", "Outdoor_VOC", "Outdoor_NOX",
+    "Indoor_Temp",
+    "Indoor_Humidity",
+    "Indoor_Radon",
+    "Outdoor_CO2",
+    "Outdoor_Temp",
+    "Outdoor_Humidity",
+    "Outdoor_VOC",
+    "Outdoor_NOX",
 ]
 
 
@@ -70,8 +86,7 @@ def fetch_from_sheets() -> pd.DataFrame:
     data_rows = values[1:]
     orig_cols = np.fromiter((len(r) for r in data_rows), dtype=np.int16, count=len(data_rows))
     padded = [
-        row + [""] * (n_cols - len(row)) if len(row) < n_cols else row[:n_cols]
-        for row in data_rows
+        row + [""] * (n_cols - len(row)) if len(row) < n_cols else row[:n_cols] for row in data_rows
     ]
 
     df = pd.DataFrame(padded, columns=headers)
