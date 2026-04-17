@@ -472,6 +472,8 @@ PR 3 — Phase 2  (Apps Script, bundled)
 
 3. **Outdoor gate** — if the most recent row's `Outdoor_PM25 >= CONFIG.INDOOR_BASELINE.outdoorGate` (10), skip. `checkAQI` handles dirty-outdoor scenarios; this check targets filtration failure with a calm outdoor backdrop.
 
+   **Windowing note**: the outdoor check reads only the single most-recent row, not a window. For WARNING (30-min window), that matches the indoor window closely enough. For CRITICAL (90-min window), there's an edge case where outdoor was elevated for 85 of 90 min and just dropped to 8 at the current tick — CRITICAL would fire on a 90-min indoor median that was partly outdoor-driven. Accepted by design for v1: (a) the Apr 16 scenario this check targets has a consistently calm outdoor backdrop; (b) if it surfaces, a future enhancement can window the outdoor gate.
+
 4. **Progressive escalation**:
    - If `full90_median > absoluteThreshold` AND we have ≥ 15 samples (enough for real 90-min coverage) → **CRITICAL**. Skip slope check — if it's sustained 90+ min it's real, period.
    - Else if `now30_median > absoluteThreshold` → **WARNING candidate**, apply slope gate (step 5).
@@ -480,6 +482,8 @@ PR 3 — Phase 2  (Apps Script, bundled)
 5. **Slope gate** (WARNING only): if `now30_median - prev30_median < slopeSuppressThreshold` (−0.5), suppress. The 30-min median is dropping meaningfully → this is a cooking event already resolving itself; the alert would be noise.
 
 6. **Cooldown**: `INDOOR_BASELINE_ALERTED` script property holds the timestamp of the last alert. Within `cooldownMinutes` of now → skip (time-based only, same semantic as `checkIndoorSpike`). After firing, set the property. **Distinct cooldowns for WARNING vs CRITICAL** — a WARNING doesn't suppress a later CRITICAL, because escalation is the whole point. Two properties: `INDOOR_BASELINE_WARN_AT`, `INDOOR_BASELINE_CRIT_AT`.
+
+   **Cross-tier cooldown semantics**: when CRITICAL fires, only `INDOOR_BASELINE_CRIT_AT` is set; `INDOOR_BASELINE_WARN_AT` is NOT touched. Consequence: after a CRITICAL resolves, a fresh WARNING is eligible once `now - WARN_AT >= cooldownMinutes` (60 min from the *last* WARNING, whenever that was). This may mean a WARNING that preceded the escalation still governs a post-CRITICAL bounce. This is intentional — the WARN cooldown is about "don't re-pester on the same warn-worthy event," not about superseding escalation. Implementers should NOT reset `WARN_AT` when CRITICAL fires.
 
 7. **Alert body** (shared template, level-dependent severity):
    - Level + headline (`⚠️ Indoor PM elevated` vs `🚨 Indoor PM elevated and not resolving`)
@@ -494,8 +498,9 @@ PR 3 — Phase 2  (Apps Script, bundled)
 **Test scenarios:**
 - Happy path: indoor 0 µg/m³ (normal) → no alert.
 - Happy path: indoor 2-4 µg/m³ (below threshold=5) → no alert.
-- **Cooking pattern (slope gate)**: indoor series `[2, 3, 6, 8, 7, 6]` → `now30_median=6.5` > 5, but `prev30_median` from earlier samples is ≥ 6.5. If slope is sufficiently negative (decay), suppress. Tests that pan-off-heat cooking that resolves fast does NOT fire WARNING.
-- **Apr 16 WARNING (positive slope)**: indoor series rising `[3, 3, 4, 5, 5, 5]`, outdoor 4.5 → `now30_median=4.5/5` ≥ threshold, slope ≥ 0 → WARNING fires with "indoor > outdoor: filtration failure suspected" subtext.
+- **Cooking pattern (slope gate)**: indoor series `[9, 8, 7, 6, 5, 5]` → sorted `[5,5,6,7,8,9]` → `now30_median = (6+7)/2 = 6.5` > 5. `prev30_median` ~8 (earlier peak of the same cooking event) → slope = −1.5 < slopeSuppressThreshold of −0.5 → **suppress**. Tests that pan-off-heat cooking in its decay phase does NOT fire WARNING.
+- **Apr 16 WARNING (rising slope)**: indoor series `[3, 4, 5, 6, 6, 6]` → sorted `[3,4,5,6,6,6]` → `now30_median = (5+6)/2 = 5.5` > 5. Outdoor 4.5 < gate 10. Slope vs prev30_median ≈ 3 gives slope = +2.5 ≥ −0.5 → **fires WARNING** with "indoor > outdoor: filtration failure suspected" subtext.
+  - Note: threshold comparison is strict `>`. A now30_median of exactly 5.0 would NOT fire; the series must produce > 5.
 - **Apr 16 CRITICAL escalation**: 90 min of sustained elevation (indoor ≥ 5 across full window) → CRITICAL fires regardless of slope. Uses `INDOOR_BASELINE_CRIT_AT` property, independent of `INDOOR_BASELINE_WARN_AT`.
 - **Outdoor-gate suppression**: indoor 7, outdoor 20 → no alert (outdoor ≥ 10; `checkAQI` handles).
 - Edge case: WARNING fires, then 30 min later 90-min median still elevated → CRITICAL escalates (WARNING cooldown doesn't block the CRITICAL tier).

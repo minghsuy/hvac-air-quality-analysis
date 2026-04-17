@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`checkIndoorBaseline` — NEW Apps Script alert** (#32, closes #27). Fires when master-bedroom `Indoor_PM25` sustains above 5 µg/m³ while outdoor is calm (< 10 µg/m³ gate). Option C discrimination: WARNING at 30-min sustained (with slope gate to suppress cooking's decay phase) + CRITICAL at 90-min sustained (regardless of slope). Distinct cooldowns per tier. Backtested against 9 months of data: **1.38 alerts/wk** (0.40 WARN + 0.98 CRIT), down from 6.89/wk at the original threshold=3 proposal.
+- **`MONITOR_VERSION` constant + per-`runAllChecks()` logging** (#32) — deploy-drift between repo and the paste-in-Apps-Script deployment is now grep-able in the execution log, not a mystery.
+- **`EXPECTED_SENSORS` per-sensor `maxGapHours`** (#32, closes #25). `checkDataCollection` now iterates expected sensors rather than the rows it happened to see in a narrow window — a sensor stopped long enough to fall out of the scan buffer still gets flagged. Temp Stick's 3h `maxGapHours` reflects its hourly cadence plus slack.
 - **Shared `scripts/_sheets_loader.py`** module — single source of truth for Sheets → DataFrame conversion (#29, closes #28). Three near-identical copies in `refresh_cache.py`, `dashboard.py`, and `bench_heatmap.py` collapsed into one with clean mock boundaries (`_fetch_values` + `_values_to_df`).
 - **Pre-push guardrail** (`scripts/hooks/pre-push` Section 8) — blocks new root-level `.py`/`.csv`/`.json`, debug-pattern filenames, and `*.egg-info/` from ever re-entering the repo (#23). Exempts the DGX-pinned collector and template files (both `*_template.*` and `*.template.*` naming).
 - **`docs/plans/`** directory with the four-issue monitoring sprint plan (ce-plan + document-review deepened pass).
@@ -39,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/analysis/screenshot_report.py` Playwright-based visual verification hook
 
 ### Changed
+- **`checkDataCollection` rewritten** (#32, closes #25). Replaces the 50-row scan window (narrower than `DATA_GAP_HOURS` at mixed cadence — the bug that hid the 3-day Temp Stick outage) with a time-based scan of `2 × max(maxGapHours)` hours. Iterates `CONFIG.EXPECTED_SENSORS` rather than `lastSeen` keys so a sensor that fell out of the scan buffer still gets flagged. Per-sensor `DATA_GAP_*` script-property lifecycle preserved. `DATA_GAP_HOURS` retained as a deprecated legacy constant.
 - **Temp Stick polling now dedups by `last_checkin`** (#30, closes #26). Collector skips the Sheet write when the sensor hasn't produced a fresh reading since the last successful fetch — atomic `.tmp + os.replace` write, stderr warnings on cache IO failure. Attic row volume drops from ~288/day to ~24/day (matching the sensor's actual hourly cadence).
 - **Repo tidy-pass** (#23): 6 supporting docs moved into `docs/` (`BACKLOG.md`, `CLAUDE_CODE_CONTEXT.md`, `DATA_DICTIONARY.md`, `PROJECT_STRUCTURE.md`, `RELEASE_CHECKLIST.md`, `TROUBLESHOOTING.md`). Root Python scripts moved into `scripts/utils/` (non-production) and `scripts/collectors/` (template only). `collect_with_sheets_api_v2.py` stays at root per DGX systemd pin. Duplicate `setup-git-hooks.sh` removed in favor of `scripts/install-hooks.sh`.
 - Fixed ERV model in docs: Panasonic FV-04VE1 → Carrier ERVXXLHB (horizontal, attic-installed)
