@@ -1,0 +1,238 @@
+<!doctype html><html><head><meta charset='utf-8'><title>HVAC air quality findings — verification report</title><style>
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+       max-width: 900px; margin: 2em auto; padding: 0 1em; color: #222; line-height: 1.55; }
+h1 { border-bottom: 2px solid #E8744F; padding-bottom: 0.3em; }
+h2 { border-bottom: 1px solid #ddd; padding-bottom: 0.2em; margin-top: 2.2em; }
+table.data { border-collapse: collapse; margin: 1em 0; font-size: 0.95em; }
+table.data th, table.data td { padding: 0.4em 0.9em; text-align: left; }
+table.data th { background: #f5f5f5; border-bottom: 2px solid #ccc; }
+table.data td { border-bottom: 1px solid #eee; }
+table.data caption { caption-side: top; text-align: left; font-weight: 600;
+                      padding-bottom: 0.4em; color: #555; }
+.meta { color: #666; font-size: 0.88em; }
+.caveat { background: #fffbe6; border-left: 4px solid #FF9800; padding: 0.5em 1em; margin: 1em 0; }
+.supports { background: #f1f8e9; border-left: 4px solid #4CAF50; padding: 0.5em 1em; margin: 1em 0; }
+.rejects  { background: #fdecea; border-left: 4px solid #D32F2F; padding: 0.5em 1em; margin: 1em 0; }
+code { background: #f5f5f5; padding: 0.1em 0.3em; border-radius: 3px; font-size: 0.9em; }
+</style></head><body>
+        <h1>HVAC air quality findings — verification report</h1>
+        <p class="meta">
+          Generated 2026-04-17 00:47 UTC from <code>.cache/air_quality.parquet</code> (142,408 rows,
+          2025-07-26 → 2026-04-16).
+          Reproducible via <code>uv run python scripts/analysis/verify_findings.py</code>.
+        </p>
+
+        <h2>Scope and what this audits</h2>
+        <p>
+          This report reproduces the Spearman correlations in
+          <a href="../findings.html">findings</a>, the filter-replacement history from
+          the project wiki's Analysis Results page, and the
+          Feb 7-8 2026 alert-escalation case study. Running it against the parquet also surfaced a
+          previously-undocumented natural experiment (Sept-Oct 2025), which is the most
+          researcher-relevant finding in the dataset.
+        </p>
+
+        <h2>1. Filter periods and the natural experiment</h2>
+        <table class="data"><caption>Per-period measured efficiency (master bedroom Airthings)</caption>
+  <thead>
+    <tr style="text-align: right;">
+      <th>period</th>
+      <th>start</th>
+      <th>end</th>
+      <th>actual_days</th>
+      <th>mfr_days</th>
+      <th>valid_readings</th>
+      <th>median_eff</th>
+      <th>days_ge_85</th>
+      <th>indoor_zero_pct</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ERV OEM MERV 13 (observed start)</td>
+      <td>2025-07-26</td>
+      <td>2025-09-06</td>
+      <td>42</td>
+      <td>—</td>
+      <td>1160</td>
+      <td>100.0</td>
+      <td>13</td>
+      <td>64.0</td>
+    </tr>
+    <tr>
+      <td>ERV generic MERV 13 substitute</td>
+      <td>2025-09-06</td>
+      <td>2025-10-15</td>
+      <td>39</td>
+      <td>—</td>
+      <td>1378</td>
+      <td>69.0</td>
+      <td>8</td>
+      <td>4.0</td>
+    </tr>
+    <tr>
+      <td>ERV OEM MERV 13 cycle 2</td>
+      <td>2025-10-15</td>
+      <td>2026-02-08</td>
+      <td>116</td>
+      <td>90</td>
+      <td>14361</td>
+      <td>93.9</td>
+      <td>94</td>
+      <td>39.0</td>
+    </tr>
+    <tr>
+      <td>Zone MERV 12 cycle 1</td>
+      <td>2025-11-10</td>
+      <td>2026-02-08</td>
+      <td>90</td>
+      <td>90</td>
+      <td>11965</td>
+      <td>93.7</td>
+      <td>73</td>
+      <td>35.0</td>
+    </tr>
+  </tbody>
+</table>
+        <div>                        <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.1.0.min.js" integrity="sha256-Ei4740bWZhaUTQuD6q9yQlgVCMPBz6CZWhevDYPv93A=" crossorigin="anonymous"></script>                <div id="5cf28e0a-a71d-438d-8d69-f95c85bc468e" class="plotly-graph-div" style="height:420px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("5cf28e0a-a71d-438d-8d69-f95c85bc468e")) {                    Plotly.newPlot(                        "5cf28e0a-a71d-438d-8d69-f95c85bc468e",                        [{"hovertemplate":"ERV OEM MERV 13 (observed start)\u003cbr\u003e%{x}\u003cbr\u003eMedian efficiency: %{y:.1f}%%\u003cextra\u003e\u003c\u002fextra\u003e","marker":{"color":"#4CAF50","size":5},"mode":"markers","name":"ERV OEM MERV 13 (observed start)","x":["2025-07-28","2025-07-29","2025-07-30","2025-07-31","2025-08-01","2025-08-02","2025-08-03","2025-08-04","2025-08-05","2025-08-06","2025-08-30","2025-08-31","2025-09-02","2025-09-03","2025-09-04"],"y":{"dtype":"f8","bdata":"AAAAAAAAWUAAAAAAAABZQAAAAAAAAFlAAAAAAAAAWUBkFqlJkyZSQAAAAAAAAFlAAAAAAAAAWUAAAAAAAABZQAAAAAAAAFlAAAAAAAAAWUAzMzMzMzNVQDMzMzMz01VA7FG4HoV7V0AAAAAAAABZQAAAAAAAAFlA"},"type":"scatter"},{"hovertemplate":"ERV generic MERV 13 substitute\u003cbr\u003e%{x}\u003cbr\u003eMedian efficiency: %{y:.1f}%%\u003cextra\u003e\u003c\u002fextra\u003e","marker":{"color":"#D32F2F","size":5},"mode":"markers","name":"ERV generic MERV 13 substitute","x":["2025-09-06","2025-09-11","2025-09-12","2025-09-13","2025-09-14","2025-09-15","2025-09-16","2025-09-17","2025-09-18","2025-09-19","2025-09-20","2025-09-21","2025-09-22","2025-09-23","2025-09-24","2025-09-25","2025-09-26","2025-09-27","2025-09-29","2025-09-30","2025-10-04","2025-10-05","2025-10-06","2025-10-07","2025-10-08","2025-10-10","2025-10-13","2025-10-14"],"y":{"dtype":"f8","bdata":"XI\u002fC9SjsUUAUrkfheiRSQDMzMzMzI1JAcD0K16NYUkAAAAAAAABZQHsUrkfh2lVAMzMzMzOjUkCQwvUoXJdVQD0K16NwbVVAuB6F61H4T0CkcD0K18NSQFK4HoXrgVVAhetRuB41UkCQwvUoXN9RQB6F61G4TlJAZmZmZma2UEA+CtejcF1MQIXrUbgeZU1AzMzMzMxsQUA9CtejcP1FQBSuR+F6jFVAuB6F61HAUkAAAAAAALBSQJDC9ShcX1JA16NwPQp3UkAK16NwPfpRQD0K16NwjVZAAAAAAAAAWUA="},"type":"scatter"},{"hovertemplate":"ERV OEM MERV 13 cycle 2\u003cbr\u003e%{x}\u003cbr\u003eMedian efficiency: %{y:.1f}%%\u003cextra\u003e\u003c\u002fextra\u003e","marker":{"color":"#4CAF50","size":5},"mode":"markers","name":"ERV OEM MERV 13 cycle 2","x":["2025-10-15","2025-10-16","2025-10-17","2025-10-18","2025-10-19","2025-10-20","2025-10-21","2025-10-22","2025-10-23","2025-10-24","2025-10-25","2025-10-26","2025-10-28","2025-10-29","2025-10-30","2025-10-31","2025-11-01","2025-11-02","2025-11-03","2025-11-08","2025-11-09","2025-11-10","2025-11-11","2025-11-12","2025-11-16","2025-11-18","2025-11-20","2025-11-21","2025-11-22","2025-11-23","2025-11-24","2025-11-25","2025-11-26","2025-11-27","2025-11-28","2025-11-29","2025-11-30","2025-12-01","2025-12-02","2025-12-03","2025-12-04","2025-12-05","2025-12-06","2025-12-07","2025-12-08","2025-12-09","2025-12-10","2025-12-11","2025-12-12","2025-12-13","2025-12-14","2025-12-15","2025-12-16","2025-12-17","2025-12-18","2025-12-19","2025-12-27","2025-12-29","2025-12-30","2025-12-31","2026-01-01","2026-01-04","2026-01-06","2026-01-07","2026-01-08","2026-01-09","2026-01-10","2026-01-11","2026-01-12","2026-01-13","2026-01-14","2026-01-15","2026-01-16","2026-01-17","2026-01-18","2026-01-19","2026-01-20","2026-01-21","2026-01-22","2026-01-23","2026-01-24","2026-01-25","2026-01-26","2026-01-27","2026-01-28","2026-01-29","2026-01-30","2026-01-31","2026-02-01","2026-02-02","2026-02-03","2026-02-04","2026-02-05","2026-02-06","2026-02-07"],"y":{"dtype":"f8","bdata":"AAAAAAAAWUAAAAAAAABZQAAAAAAAAFlAAAAAAAAAWUCPwvUoXJ9WQAAAAAAAAFlAKVyPwvWAVkAAAAAAAABZQAAAAAAAAFlAAAAAAAAAWUAAAAAAAABZQAAAAAAAAFlAAAAAAAAAWUAAAAAAAABZQAAAAAAAAFlAAAAAAAAAWUAAAAAAAABZQAAAAAAAAFlAAAAAAAAAWUCamZmZmfFXQAAAAAAAAFlAAAAAAAAAWUAAAAAAAABZQAAAAAAAAFlAAAAAAAAYWEAAAAAAAABZQAAAAAAAAFlAAAAAAAAAWUAAAAAAAABZQEjhehSuf1dAwvUoXI\u002fCV0CkcD0K11NXQLgehetRMFdAcT0K16NAV0CkcD0K14NWQKRwPQrX41ZA4XoUrkfhVUC4HoXrUWBXQJqZmZmZoVdAAAAAAAAAWUAfhetRuI5XQBSuR+F6xFdAH4XrUbiuV0AAAAAAAOBXQIbrUbge\u002fVZAw\u002fUoXI8SV0Bcj8L1KJxWQNejcD0KP1dAAAAAAABIV0AAAAAAAABZQKRwPQrXS1dAzMzMzMykV0AUrkfhejxXQJqZmZmZWVdAwvUoXI8aV0AAAAAAAABZQHA9CtejaFhAAAAAAAAAWUAAAAAAAABZQAAAAAAAAFlAAAAAAAAAWUAAAAAAAABZQAAAAAAAAFlAAAAAAAAAWUB7FK5H4RpXQHE9CtejmFZAAAAAAAAAWUAAAAAAAABZQAAAAAAAAFlAH4XrUbiGV0AfhetRuI5XQNejcD0Kl1dAFK5H4XoEV0AfhetRuI5XQIXrUbgepVdAFK5H4XpkV0CkcD0K12NXQK5H4XoUjldAUrgeheuBV0CPwvUoXL9XQM3MzMzM3FdAAAAAAAAAWUCPwvUoXJ9XQAAAAAAAAFlA7FG4HoWrVkAfhetRuDZUQHE9CtejoFdArkfhehSOV0BwPQrXo4hXQIXrUbgePVhAPgrXo3AtVkCkcD0K1zNXQEjhehSuT1dArkfhehQuV0A+CtejcL1XQA=="},"type":"scatter"},{"hovertemplate":"Zone MERV 12 cycle 1\u003cbr\u003e%{x}\u003cbr\u003eMedian efficiency: %{y:.1f}%%\u003cextra\u003e\u003c\u002fextra\u003e","marker":{"color":"#4A90D9","size":5},"mode":"markers","name":"Zone MERV 12 cycle 1","x":["2025-11-10","2025-11-11","2025-11-12","2025-11-16","2025-11-18","2025-11-20","2025-11-21","2025-11-22","2025-11-23","2025-11-24","2025-11-25","2025-11-26","2025-11-27","2025-11-28","2025-11-29","2025-11-30","2025-12-01","2025-12-02","2025-12-03","2025-12-04","2025-12-05","2025-12-06","2025-12-07","2025-12-08","2025-12-09","2025-12-10","2025-12-11","2025-12-12","2025-12-13","2025-12-14","2025-12-15","2025-12-16","2025-12-17","2025-12-18","2025-12-19","2025-12-27","2025-12-29","2025-12-30","2025-12-31","2026-01-01","2026-01-04","2026-01-06","2026-01-07","2026-01-08","2026-01-09","2026-01-10","2026-01-11","2026-01-12","2026-01-13","2026-01-14","2026-01-15","2026-01-16","2026-01-17","2026-01-18","2026-01-19","2026-01-20","2026-01-21","2026-01-22","2026-01-23","2026-01-24","2026-01-25","2026-01-26","2026-01-27","2026-01-28","2026-01-29","2026-01-30","2026-01-31","2026-02-01","2026-02-02","2026-02-03","2026-02-04","2026-02-05","2026-02-06","2026-02-07"],"y":{"dtype":"f8","bdata":"AAAAAAAAWUAAAAAAAABZQAAAAAAAAFlAAAAAAAAYWEAAAAAAAABZQAAAAAAAAFlAAAAAAAAAWUAAAAAAAABZQEjhehSuf1dAwvUoXI\u002fCV0CkcD0K11NXQLgehetRMFdAcT0K16NAV0CkcD0K14NWQKRwPQrX41ZA4XoUrkfhVUC4HoXrUWBXQJqZmZmZoVdAAAAAAAAAWUAfhetRuI5XQBSuR+F6xFdAH4XrUbiuV0AAAAAAAOBXQIbrUbge\u002fVZAw\u002fUoXI8SV0Bcj8L1KJxWQNejcD0KP1dAAAAAAABIV0AAAAAAAABZQKRwPQrXS1dAzMzMzMykV0AUrkfhejxXQJqZmZmZWVdAwvUoXI8aV0AAAAAAAABZQHA9CtejaFhAAAAAAAAAWUAAAAAAAABZQAAAAAAAAFlAAAAAAAAAWUAAAAAAAABZQAAAAAAAAFlAAAAAAAAAWUB7FK5H4RpXQHE9CtejmFZAAAAAAAAAWUAAAAAAAABZQAAAAAAAAFlAH4XrUbiGV0AfhetRuI5XQNejcD0Kl1dAFK5H4XoEV0AfhetRuI5XQIXrUbgepVdAFK5H4XpkV0CkcD0K12NXQK5H4XoUjldAUrgeheuBV0CPwvUoXL9XQM3MzMzM3FdAAAAAAAAAWUCPwvUoXJ9XQAAAAAAAAFlA7FG4HoWrVkAfhetRuDZUQHE9CtejoFdArkfhehSOV0BwPQrXo4hXQIXrUbgePVhAPgrXo3AtVkCkcD0K1zNXQEjhehSuT1dArkfhehQuV0A+CtejcL1XQA=="},"type":"scatter"}],                        {"annotations":[{"showarrow":false,"text":"85% reference","x":1,"xanchor":"right","xref":"x domain","y":85,"yanchor":"bottom","yref":"y"}],"height":420,"hovermode":"closest","legend":{"orientation":"h","x":0.5,"xanchor":"center","y":1.08},"margin":{"b":40,"l":60,"r":40,"t":60},"shapes":[{"line":{"color":"#888","dash":"dash"},"type":"line","x0":0,"x1":1,"xref":"x domain","y0":85,"y1":85,"yref":"y"}],"template":{"data":{"barpolar":[{"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"geo":{"bgcolor":"white","lakecolor":"white","landcolor":"white","showlakes":true,"showland":true,"subunitcolor":"#C8D4E3"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"light"},"paper_bgcolor":"white","plot_bgcolor":"white","polar":{"angularaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""},"bgcolor":"white","radialaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"yaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"zaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"ternary":{"aaxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"baxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"bgcolor":"white","caxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""}},"title":{"x":0.05},"xaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2}}},"title":{"text":"Daily median filter efficiency by cycle \u2014 master bedroom"},"xaxis":{"title":{"text":"date"}},"yaxis":{"range":[0,105],"title":{"text":"Daily median efficiency (%)"}}},                        {"responsive": true}                    )                };            </script>        </div>
+
+        <div class="supports"><strong>Natural experiment: MERV rating is not a performance guarantee.</strong>
+          For ~40 days (Sept 6 – Oct 15 2025) the OEM-specified ERV filter was temporarily replaced
+          with a generic MERV-13-rated HVAC-style panel filter of a different form factor. Same home,
+          same outdoor air, same sensors, same HVAC — only the filter changed. Apparent efficiency
+          dropped from 93.9%+ OEM median to 69.0% substitute median (worst days 35-50%). The moment
+          the OEM filter was reinstalled, efficiency returned to 95%+ on day one. Both filters
+          carried MERV 13 ratings.
+          The underlying mechanism (media quality, form-factor bypass, construction density) is not
+          distinguishable from this data alone; the ~20-percentage-point efficiency delta between two
+          MERV-13-rated filters in the same installation is the observation.
+        </div>
+
+        <div class="supports"><strong>Load-based filter-life prediction fails.</strong>
+          ERV OEM MERV 13 cycle 2 ran 29% past the manufacturer's 90-day recommendation at 93.9%
+          median efficiency across 14,361 valid readings. Prior analysis documented a filter at 197%
+          of theoretical "max life" still performing at 87.3%. Load accumulation does not predict
+          efficiency degradation for this system — the alerting system instead triggers on actual
+          measured efficiency, which catches real failures (see section 2).
+        </div>
+
+        <div class="rejects"><strong>What the data does NOT support.</strong>
+          The earlier findings.md claim that MERV 13 "consistently holds &gt;85% for 120+ days"
+          is overstated. It holds for OEM MERV 13 installations (93.9% cycle 2, 93.7% zone cycle 1);
+          it categorically does not hold for a generic MERV-13-rated substitute (69.0% median).
+          The revised claim: <em>OEM MERV 13 holds 95%+; label-equivalent substitutes may not, and
+          only monitoring distinguishes them.</em>
+        </div>
+
+        <h2>2. Feb 7-8 2026 alert escalation</h2>
+        <p>
+          At ~13:00 on Feb 7, master bedroom filter efficiency dropped from a ~95% baseline and
+          continued to decline overnight into Feb 8. The alerting system (HVACMonitor v3) escalated
+          WARNING → CRITICAL. Filters were replaced mid-day Feb 8. Hourly efficiency recovered to
+          ≥95% within an hour. The event was also physically detectable — the family reported a
+          musty smell before replacement.
+        </p>
+        <div>                            <div id="65bcb481-9dd0-4772-8a44-8c80aa6e590e" class="plotly-graph-div" style="height:420px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("65bcb481-9dd0-4772-8a44-8c80aa6e590e")) {                    Plotly.newPlot(                        "65bcb481-9dd0-4772-8a44-8c80aa6e590e",                        [{"hovertemplate":"%{x|%b %d %H:00}\u003cbr\u003eEfficiency: %{y:.1f}%%\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#E8744F","width":2},"mode":"lines+markers","name":"Filter efficiency (hourly median)","x":["2026-02-07T00:00:00.000000000","2026-02-07T01:00:00.000000000","2026-02-07T02:00:00.000000000","2026-02-07T03:00:00.000000000","2026-02-07T04:00:00.000000000","2026-02-07T05:00:00.000000000","2026-02-07T06:00:00.000000000","2026-02-07T07:00:00.000000000","2026-02-07T08:00:00.000000000","2026-02-07T09:00:00.000000000","2026-02-07T10:00:00.000000000","2026-02-07T11:00:00.000000000","2026-02-07T12:00:00.000000000","2026-02-07T13:00:00.000000000","2026-02-07T14:00:00.000000000","2026-02-07T15:00:00.000000000","2026-02-07T21:00:00.000000000","2026-02-07T22:00:00.000000000","2026-02-07T23:00:00.000000000","2026-02-08T00:00:00.000000000","2026-02-08T09:00:00.000000000","2026-02-08T10:00:00.000000000","2026-02-08T11:00:00.000000000","2026-02-08T12:00:00.000000000"],"xaxis":"x","y":{"dtype":"f8","bdata":"KVyPwvUIV0BmZmZmZj5XQAAAAAAAAFlACtejcD3CV0CuR+F6FO5XQHsUrkfhQldAwvUoXI+6V0AfhetRuNZXQBSuR+F65FdAhutRuB7VV0DXo3A9CudXQK5H4XoUzldA9ihcj8JVV0DMzMzMzOxRQBSuR+F6ZFFAAAAAAAAAWUAAAAAAABBXQAAAAAAAAFlAMzMzMzMTVEAK16NwPcpXQJqZmZmZiUhAAAAAAAAAWUAAAAAAAABZQHsUrkfh4lZA"},"yaxis":"y","type":"scatter"},{"hovertemplate":"%{x|%b %d %H:00}\u003cbr\u003eOutdoor PM2.5: %{y:.1f} \u00b5g\u002fm\u00b3\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#4A90D9","dash":"dot","width":1},"mode":"lines","name":"Outdoor PM2.5 (hourly median)","x":["2026-02-07T00:00:00.000000000","2026-02-07T01:00:00.000000000","2026-02-07T02:00:00.000000000","2026-02-07T03:00:00.000000000","2026-02-07T04:00:00.000000000","2026-02-07T05:00:00.000000000","2026-02-07T06:00:00.000000000","2026-02-07T07:00:00.000000000","2026-02-07T08:00:00.000000000","2026-02-07T09:00:00.000000000","2026-02-07T10:00:00.000000000","2026-02-07T11:00:00.000000000","2026-02-07T12:00:00.000000000","2026-02-07T13:00:00.000000000","2026-02-07T14:00:00.000000000","2026-02-07T15:00:00.000000000","2026-02-07T21:00:00.000000000","2026-02-07T22:00:00.000000000","2026-02-07T23:00:00.000000000","2026-02-08T00:00:00.000000000","2026-02-08T09:00:00.000000000","2026-02-08T10:00:00.000000000","2026-02-08T11:00:00.000000000","2026-02-08T12:00:00.000000000"],"xaxis":"x","y":{"dtype":"f8","bdata":"9ihcj8L1KEDsUbgehasqQHE9Ctej8C1A16NwPQp3M0CkcD0K12M2QMzMzMzMTDRAuB6F61G4MkA+CtejcL00QFK4HoXrkTZAuB6F61G4NUBwPQrXo3A2QKRwPQrXgzRAFK5H4XrULkBcj8L1KFwtQClcj8L1KCZAMzMzMzOzJkDXo3A9CtclQBSuR+F61CRAzczMzMxMJEA+CtejcL0kQK5H4XoUriVAj8L1KFyPKEAzMzMzMzMlQHA9Ctej8CVA"},"yaxis":"y2","type":"scatter"}],                        {"annotations":[{"showarrow":false,"text":"85% reference","x":1,"xanchor":"right","xref":"x domain","y":85,"yanchor":"bottom","yref":"y"},{"showarrow":false,"text":"warning threshold (77%)","x":1,"xanchor":"right","xref":"x domain","y":77,"yanchor":"top","yref":"y"},{"showarrow":false,"text":"critical threshold (67%)","x":1,"xanchor":"right","xref":"x domain","y":67,"yanchor":"top","yref":"y"},{"font":{"color":"#4CAF50","size":11},"showarrow":false,"text":"filter replaced","x":"2026-02-08T12:00:00","xanchor":"left","y":1,"yanchor":"bottom","yref":"paper"}],"height":420,"hovermode":"x unified","legend":{"orientation":"h","x":0.5,"xanchor":"center","y":1.08},"margin":{"b":40,"l":60,"r":40,"t":60},"shapes":[{"line":{"color":"#888","dash":"dash"},"type":"line","x0":0,"x1":1,"xref":"x domain","y0":85,"y1":85,"yref":"y"},{"line":{"color":"#FF9800","dash":"dot"},"type":"line","x0":0,"x1":1,"xref":"x domain","y0":77,"y1":77,"yref":"y"},{"line":{"color":"#D32F2F","dash":"dot"},"type":"line","x0":0,"x1":1,"xref":"x domain","y0":67,"y1":67,"yref":"y"},{"line":{"color":"#4CAF50","dash":"dash","width":1},"type":"line","x0":"2026-02-08T12:00:00","x1":"2026-02-08T12:00:00","y0":0,"y1":1,"yref":"paper"}],"template":{"data":{"barpolar":[{"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"geo":{"bgcolor":"white","lakecolor":"white","landcolor":"white","showlakes":true,"showland":true,"subunitcolor":"#C8D4E3"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"light"},"paper_bgcolor":"white","plot_bgcolor":"white","polar":{"angularaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""},"bgcolor":"white","radialaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"yaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"zaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"ternary":{"aaxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"baxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"bgcolor":"white","caxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""}},"title":{"x":0.05},"xaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2}}},"title":{"text":"Feb 7-8 2026 alert escalation \u2014 master bedroom"},"xaxis":{"anchor":"y","domain":[0.0,0.94],"title":{"text":"hour"}},"yaxis":{"anchor":"x","domain":[0.0,1.0],"range":[0,105],"title":{"text":"Filter efficiency (%)"}},"yaxis2":{"anchor":"x","overlaying":"y","side":"right","title":{"text":"Outdoor PM2.5 (\u00b5g\u002fm\u00b3)"}}},                        {"responsive": true}                    )                };            </script>        </div>
+        <p class="meta">Indoor PM2.5 (AirGradient, second bedroom): AM median 1.01 µg/m³ (n=120) → PM median 0.32 µg/m³ (n=112)</p>
+
+        <h2>3. Spearman correlations (master bedroom)</h2>
+        <table class="data"><caption>Claimed vs measured, full history</caption>
+  <thead>
+    <tr style="text-align: right;">
+      <th>pair</th>
+      <th>claimed</th>
+      <th>measured</th>
+      <th>n</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Indoor_PM25 ↔ Filter_Efficiency</td>
+      <td>-0.96</td>
+      <td>-0.967</td>
+      <td>65139</td>
+    </tr>
+    <tr>
+      <td>Indoor_CO2 ↔ Indoor_VOC</td>
+      <td>0.65</td>
+      <td>0.651</td>
+      <td>65139</td>
+    </tr>
+    <tr>
+      <td>Outdoor_PM25 ↔ Indoor_Radon</td>
+      <td>0.59</td>
+      <td>0.530</td>
+      <td>61510</td>
+    </tr>
+    <tr>
+      <td>Outdoor_Temp ↔ Outdoor_CO2</td>
+      <td>-0.59</td>
+      <td>-0.545</td>
+      <td>61510</td>
+    </tr>
+    <tr>
+      <td>Outdoor_VOC ↔ Outdoor_NOX</td>
+      <td>-0.45</td>
+      <td>-0.427</td>
+      <td>61510</td>
+    </tr>
+  </tbody>
+</table>
+        <p>
+          Indoor PM2.5 ↔ Filter Efficiency and Indoor CO2 ↔ Indoor VOC reproduce the published
+          values essentially exactly. The three others drift 0.03–0.06 in magnitude from the
+          <code>findings.md</code> numbers written against an earlier ~98k-row snapshot; direction
+          and sign agree across all five.
+        </p>
+
+        <h2>Caveats and limitations</h2>
+        <div class="caveat">
+          <strong>n=1 house, 9 months.</strong> Results are not generalizable to other homes or
+          climates. They <em>are</em> generalizable as measurement methodology — and useful for
+          falsifying specific manufacturer claims (a single counterexample suffices to reject
+          "load predicts efficiency").
+        </div>
+        <div class="caveat">
+          <strong>No reference-instrument co-location.</strong> All sensors are consumer-grade
+          (Airthings View Plus, AirGradient Open Air &amp; ONE). No formal validation against a
+          research-grade reference. Absolute PM2.5 accuracy is not claimed; the within-dataset
+          relative dynamics and cross-sensor agreement are what the findings rest on.
+        </div>
+        <div class="caveat">
+          <strong>Sensor precision: integer rounding inflates high efficiency medians.</strong>
+          Airthings rounds indoor PM2.5 to whole numbers (0, 1, 2, ...). When true indoor PM is
+          below 0.5 µg/m³, the sensor reports 0, and computed efficiency pegs at 100% regardless of
+          the filter's real performance. The cycles table above includes an <code>indoor_zero_pct</code>
+          column showing what fraction of each period's valid readings came from this rounding-to-zero
+          case. A period with high indoor_zero_pct and median efficiency = 100% is reporting "indoor
+          below sensor resolution," not "perfect filtration." The first OEM period is affected by
+          this. AirGradient (0.01 µg/m³ precision) is used for case-study indoor PM2.5 medians
+          where precision matters.
+        </div>
+        <div class="caveat">
+          <strong>Shared indoor sensor: efficiency reflects combined upstream filtration.</strong>
+          All master-bedroom efficiency values come from the same Airthings sensor and the same
+          outdoor reference. They reflect the combined effect of every filter in the air path (ERV,
+          main HVAC, zone filter), not any one filter's independent performance. The 93.9% cycle-2
+          and 93.7% zone-cycle-1 figures overlap in the Nov 10 2025 – Feb 8 2026 window and are not
+          independent measurements; the 0.2 percentage-point gap is within sampling noise.
+        </div>
+        <div class="caveat">
+          <strong>Seasonal measurement coverage.</strong> Efficiency calculation requires outdoor
+          PM2.5 above a seasonal minimum (winter 10, summer 5, default 7 µg/m³). Summer days with
+          very clean outdoor air are excluded, so the daily-count coverage is thinner in summer
+          than winter. This affects sample size per period but does not explain the Sept-Oct 2025
+          efficiency drop (that was a filter swap, not a measurement artifact).
+        </div>
+        <div class="caveat">
+          <strong>Cooking-spike contamination.</strong> The second-bedroom AirGradient sits near
+          the kitchen. It is used for precision PM2.5 differentials in short-window comparisons,
+          not for health-claim baselines.
+        </div>
+
+        <p class="meta">
+          Source: <a href="https://github.com/minghsuy/hvac-air-quality-analysis">github.com/minghsuy/hvac-air-quality-analysis</a>
+          · Script: <code>scripts/analysis/verify_findings.py</code>
+        </p>
+</body></html>
