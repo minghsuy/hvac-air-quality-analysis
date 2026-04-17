@@ -633,14 +633,10 @@ function checkIndoorBaseline() {
   const prev30Med = _medianOf(prev30);
   const full90Med = _medianOf(full90);
 
-  // Most-recent outdoor reading (from the same scan; outdoor rows interleave
-  // with master_bedroom rows at the same tick).
-  const outdoorRows = data
-    .filter(r => String(r[COLS.ROOM]) === 'outdoor')
-    .map(r => ({ ts: new Date(r[COLS.TIMESTAMP]), outdoor: parseFloat(r[COLS.OUTDOOR_PM25]) }))
-    .filter(r => !isNaN(r.ts.getTime()) && !isNaN(r.outdoor))
-    .sort((a, b) => b.ts - a.ts);
-  const latestOutdoor = outdoorRows.length ? outdoorRows[0].outdoor : roomRows[roomRows.length - 1].outdoor;
+  // Outdoor PM is written as a column on each master_bedroom row (there's no
+  // separate 'outdoor' Room value in this schema), so the most recent
+  // master_bedroom row carries the latest outdoor reading for this tick.
+  const latestOutdoor = roomRows[roomRows.length - 1].outdoor;
 
   // Outdoor gate: above this, checkAQI covers the scenario — don't double-alert.
   if (!isNaN(latestOutdoor) && latestOutdoor >= cfg.outdoorGate) {
@@ -852,14 +848,16 @@ function checkDataCollection() {
   const data = sheet.getRange(lastRow - numRows + 1, 1, numRows, 4).getValues();
 
   const now = new Date();
-  const cutoff = new Date(now.getTime() - scanHours * 3600 * 1000);
   const props = PropertiesService.getScriptProperties();
 
-  // Build lastSeen over the scan window only.
+  // Build lastSeen across the entire scan buffer — do NOT filter by the scan
+  // window here. If a sensor stopped 2 days ago, we still want its true
+  // `hoursSince` in the alert body. The scan window matters only for the
+  // stopped/not-stopped decision below (via maxGapHours comparison).
   const lastSeen = {};
   data.forEach(row => {
     const ts = new Date(row[COLS.TIMESTAMP]);
-    if (isNaN(ts.getTime()) || ts < cutoff) return;
+    if (isNaN(ts.getTime())) return;
     const sensorType = String(row[COLS.SENSOR_TYPE]);
     if (!sensorType || sensorType === 'undefined') return;
     const room = String(row[COLS.ROOM]);
@@ -926,9 +924,17 @@ function checkDataCollection() {
     };
   }
 
-  const expectedCount = Object.keys(CONFIG.EXPECTED_SENSORS).length;
-  const status = stoppedSensors.length > 0 ? 'PARTIAL' :
-                 Object.keys(lastSeen).length < expectedCount ? 'NO_DATA' : 'OK';
+  // Status reflects the actual gap state of expected sensors, not the
+  // alert-eligible set. `stoppedSensors` excludes sensors already in
+  // cooldown, so using it for status misreports OK (2 of 3 writing,
+  // 1 in cooldown) as NO_DATA. Evaluate per-sensor directly instead.
+  const sensorsInGap = Object.entries(CONFIG.EXPECTED_SENSORS).filter(([type, spec]) => {
+    const seen = lastSeen[type];
+    return !seen || (now - seen.timestamp) > spec.maxGapHours * 3600 * 1000;
+  });
+  const status = Object.keys(lastSeen).length === 0 ? 'NO_DATA' :
+                 sensorsInGap.length > 0 ? 'PARTIAL' :
+                 'OK';
 
   return { status, lastSeen, stoppedSensors, resumedSensors, alert };
 }
