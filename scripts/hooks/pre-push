@@ -18,16 +18,25 @@ fi
 
 remote="${1:-origin}"
 upstream="$remote/$branch"
-if git rev-parse --verify --quiet "$upstream" >/dev/null; then
+# On a pushed branch, compare against the upstream. On the FIRST push of a new
+# branch (no upstream yet) we'd otherwise fall back to "range=HEAD" which means
+# `git diff HEAD` — that's working-tree-vs-HEAD, which is empty on a clean tree
+# at push time. The scan would silently match nothing. Use the merge-base with
+# origin/main (or master, or HEAD^) so the scan actually sees new commits.
+if git rev-parse --verify --quiet "$upstream" >/dev/null 2>&1; then
     range="$upstream..HEAD"
 else
-    range="HEAD"
+    base=$(git merge-base HEAD "$remote/main" 2>/dev/null \
+        || git merge-base HEAD "$remote/master" 2>/dev/null \
+        || git rev-parse HEAD^)
+    range="$base..HEAD"
 fi
 changed_files=$(git diff --name-only "$range" 2>/dev/null || true)
 
 # 2. ruff check (lint)
 echo "-> ruff check"
-uv run --quiet ruff check .
+uv run --quiet ruff check . \
+    || { echo "FAIL: run 'uv run ruff check . --fix' then re-stage and re-push"; exit 1; }
 
 # 3. ruff format --check (formatting)
 echo "-> ruff format --check"
@@ -52,7 +61,17 @@ for pat in "${patterns[@]}"; do
     fi
 done
 
-# 5. Visual render check (conditional: only if HTML or its generators changed)
+# 5. uv.lock sanity check: revision must not regress
+#    (I hit this once when an older uv wrote revision=2 over a revision=3 lock)
+echo "-> uv.lock revision check"
+lock_rev=$(awk -F' = ' '/^revision / {print $2; exit}' uv.lock 2>/dev/null || echo 0)
+if [[ "${lock_rev:-0}" -lt 3 ]]; then
+    echo "FAIL: uv.lock revision=$lock_rev is below 3."
+    echo "      Your uv may be out of date. Run: uv self update && uv lock"
+    exit 1
+fi
+
+# 6. Visual render check (conditional: only if HTML or its generators changed)
 if echo "$changed_files" | grep -qE 'docs/reports/findings\.html|scripts/analysis/(verify|screenshot)_findings'; then
     echo "-> screenshot verify (HTML report or its generators changed)"
     uv run --quiet python scripts/analysis/screenshot_report.py
