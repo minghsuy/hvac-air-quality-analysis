@@ -71,7 +71,16 @@ if [[ "${lock_rev:-0}" -lt 3 ]]; then
     exit 1
 fi
 
-# 6. Visual render check (conditional: only if HTML or its generators changed)
+# 6. pytest (conditional: only if .py files outside docs/ changed)
+#    Docs-only pushes skip the ~2s overhead; real code changes run the suite.
+py_changed=$(echo "$changed_files" | grep -E '\.py$' | grep -v '^docs/' || true)
+if [[ -n "$py_changed" ]]; then
+    echo "-> pytest (Python changes outside docs/)"
+    uv run --quiet pytest -q \
+        || { echo "FAIL: pytest failures — fix or re-evaluate before re-pushing"; exit 1; }
+fi
+
+# 7. Visual render check (conditional: only if HTML or its generators changed)
 if echo "$changed_files" | grep -qE 'docs/reports/findings\.html|scripts/analysis/(verify|screenshot)_findings'; then
     echo "-> screenshot verify (HTML report or its generators changed)"
     uv run --quiet python scripts/analysis/screenshot_report.py
