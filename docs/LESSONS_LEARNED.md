@@ -162,3 +162,35 @@ Calibrated thresholds from actual data:
 ```
 
 Always prefer evidence over assumptions.
+
+## Apr 16, 2026: Grep ≠ Render (HTML Chart Verification)
+
+**Problem**: Declared a Plotly-based HTML report "ready for review" after grepping the source for `plotly-graph-div` and seeing two matches. Section 1's chart was blank — load-order bug (`include_plotlyjs=False` on the first chart div, `cdn` on the second) meant Plotly.js wasn't loaded when the first div's init script ran. Only surfaced when the user opened the file in a browser.
+
+**Discovery**: Structural verification (file exists, element count correct, syntax valid) is not rendering verification. Modern web artifacts have client-side execution that only a real browser exercises.
+
+**Solution**: Added `scripts/analysis/screenshot_report.py` — Playwright-based headless rendering that asserts each chart div has bounding-box area ≥100k px². Wired into the pre-push hook to run conditionally when the HTML or its generators change. CLAUDE.md already listed Playwright MCP for this purpose; I just wasn't using it.
+
+## Apr 16, 2026: Verify Hosting Config Before Placing Artifacts
+
+**Problem**: Placed a "shareable" HTML report at `/reports/findings.html` at repo root. GitHub Pages is configured to serve `docs/` only (via `docs/_config.yml`). The artifact was invisible to the web, defeating the entire shareable-URL purpose.
+
+**Discovery**: Before creating any file intended to be hosted, check the actual hosting config. Assuming a generic "generated artifacts" convention (like `dist/`) will be hostable is wrong for Jekyll/GitHub Pages.
+
+**Solution**: Moved `reports/` → `docs/reports/`. Live URL becomes `https://<user>.github.io/<repo>/reports/findings.html`. Kept `reports/screenshots/` (ephemeral verification output) at repo root, gitignored.
+
+## Apr 16, 2026: Sensor-Rounding Artifact ≠ Perfect Filtration
+
+**Problem**: Reported "100.0% median filter efficiency" for the first OEM MERV 13 period. Not a measurement of real filtration — the Airthings indoor PM2.5 sensor rounds to integers, so when actual indoor PM is below 0.5 µg/m³ the sensor reports 0 and efficiency pegs at 100% regardless of physical reality. 64% of the period's valid readings hit this case.
+
+**Discovery**: Before computing on sensor data, understand each value's physical meaning. `Indoor_PM25 = 0` on an integer-rounding sensor isn't "zero PM" — it's "PM below the sensor's resolution." Arithmetic on it produces plausible-looking but meaningless numbers.
+
+**Solution**: Added `indoor_zero_pct` column to the cycles table so rounding exposure is visible per period. Caveat explains the mechanism. Claims are now lower-bounded (the generic substitute's 69% is real with only 4% zeros) rather than pegged to a resolution-limited ceiling.
+
+## Apr 16, 2026: Pre-Push Checklist, Not Ad-Hoc Checks
+
+**Problem**: Three separate CI/review catches in one session: (1) `ruff format --check` failing after I ran only `ruff check --fix` (CLAUDE.md lists both as mandatory), (2) `uv.lock` revision regressed from 3 → 2 because my local uv was old, (3) hardcoded sensor identifiers (device serials, MAC fragments) that bypassed the existing `d8:3b:da` grep because they used different vendor prefixes.
+
+**Discovery**: Individually these are small. Together they're a pattern: I was running checks ad hoc rather than as a disciplined sequence. Every one of them was caught after push by CI or review, when a 10-second local check would have caught it before.
+
+**Solution**: `scripts/hooks/pre-push` runs ruff check + ruff format --check + a broader device-ID grep (sensor-ID patterns for airthings/airgradient/tempstick/ecobee/nest, not only `d8:3b:da`) + conditional screenshot verify. Install via `bash scripts/install-hooks.sh` — sets up symlinks from `.git/hooks/` to the tracked `scripts/hooks/` versions.

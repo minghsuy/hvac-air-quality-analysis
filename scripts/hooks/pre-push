@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# scripts/hooks/pre-push — tracked in the repo, install via scripts/install-hooks.sh
+#
+# Runs before `git push`. Blocks pushes to main/master, runs ruff check + format,
+# scans for device identifiers and secret-shaped strings, and (if the HTML report
+# or its generating scripts changed) runs the Playwright screenshot check.
+
+set -euo pipefail
+
+branch=$(git branch --show-current)
+
+# 1. Block direct pushes to main/master
+if [[ "$branch" == "main" || "$branch" == "master" ]]; then
+    echo "BLOCKED: direct push to $branch is not allowed."
+    echo "Create a feature branch and PR instead."
+    exit 1
+fi
+
+remote="${1:-origin}"
+upstream="$remote/$branch"
+if git rev-parse --verify --quiet "$upstream" >/dev/null; then
+    range="$upstream..HEAD"
+else
+    range="HEAD"
+fi
+changed_files=$(git diff --name-only "$range" 2>/dev/null || true)
+
+# 2. ruff check (lint)
+echo "-> ruff check"
+uv run --quiet ruff check .
+
+# 3. ruff format --check (formatting)
+echo "-> ruff format --check"
+uv run --quiet ruff format --check . \
+    || { echo "FAIL: run 'uv run ruff format .' then re-stage and re-push"; exit 1; }
+
+# 4. Device-identifier / secret scan
+#    Broader than the Claude-Code built-in: covers sensor ID strings with
+#    various vendor prefixes, not just d8:3b:da.
+echo "-> secret / device-id scan"
+patterns=(
+    '192\.168\.[0-9]'                                      # local IPs
+    'd8:3b:da'                                             # Airthings MAC prefix
+    'GOOGLE_SPREADSHEET_ID[[:space:]]*=[[:space:]]*["'\''][A-Za-z0-9_-]{20}'
+    '(airthings|airgradient|tempstick|ecobee|nest)_[A-Fa-f0-9]{4,}'
+)
+for pat in "${patterns[@]}"; do
+    if git diff "$range" -U0 --no-color 2>/dev/null | grep -Ei "$pat" >/dev/null; then
+        echo "FAIL: pattern /$pat/ matched in pushed diff:"
+        git diff "$range" -U0 --no-color | grep -Ei "$pat" | head -3
+        exit 1
+    fi
+done
+
+# 5. Visual render check (conditional: only if HTML or its generators changed)
+if echo "$changed_files" | grep -qE 'docs/reports/findings\.html|scripts/analysis/(verify|screenshot)_findings'; then
+    echo "-> screenshot verify (HTML report or its generators changed)"
+    uv run --quiet python scripts/analysis/screenshot_report.py
+fi
+
+echo "OK: pre-push checks passed"
