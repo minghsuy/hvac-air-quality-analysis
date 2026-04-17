@@ -39,8 +39,8 @@ From the four origin issues:
 - **R5 (#26)**: After 24 hours of operation, attic row count should be 20-30/day (not 288/day).
 - **R6 (#25)**: A sensor that stops writing must be alerted within `maxGapHours + 1 trigger tick`. Triggers are hourly, so the actual max is `maxGapHours + 1h`: ≤ 4h for Temp Stick (1h cadence, `maxGapHours = 3`), ≤ 2h for Airthings/AirGradient (5-min cadence, `maxGapHours = 1`).
 - **R7 (#25)**: An hourly-cadence sensor (Temp Stick) must not false-alert on normal late check-ins.
-- **R8 (#27)**: Using Apr 16 hourly data as historical replay, a new absolute-threshold alert must fire WARNING between 18:15-18:45.
-- **R9 (#27)**: The new check must not false-alert on Apr 15 (outdoor similar, indoor stayed at 0).
+- **R8 (#27)**: Using Apr 16 hourly data as historical replay, the new `checkIndoorBaseline` must fire WARNING between 18:15-19:00 (first 30 min of sustained elevation with rising slope) and CRITICAL by 19:45-20:30 (90 min of sustained elevation).
+- **R9 (#27)**: The new check must not false-alert on Apr 15 (outdoor similar, indoor stayed at 0), and must not spam more than ~3 alerts/week on average across the 9-month backtest.
 - **R10 (all)**: Preserves existing behavior that is intentional — `test()` function as Apps Script verification harness, seasonal efficiency `minOutdoorPM` gate, "alert once per gap" script-property semantics.
 
 ## Scope Boundaries
@@ -92,8 +92,11 @@ Not needed — all four issues have concrete, locally-grounded fixes. The Temp S
 | Dedup: skip entire `build_temp_only_row` call when `last_checkin` unchanged | Cleaner than writing a "null row" — the Sheet reflects true cadence. Matches #25's new monitor which scans by timestamp, not row count. |
 | `EXPECTED_SENSORS` as dict with per-sensor `maxGapHours`, not a flat list | Allows 1h cadence (Temp Stick) to coexist with 5-min cadence (Airthings/AirGradient) without false-alerting. Directly addresses #25 Bug 2. |
 | Scan window = `max(maxGapHours) × 2` hours, not 50 rows | Decouples scan size from write rate. After #26 dedup cuts Temp Stick to 24/day, row-based scanning would break. |
-| `checkIndoorBaseline` uses fixed threshold `3 µg/m³` sustained 30 min, not rolling baseline | Per #27 acceptance criterion — simpler, ships today. Rolling baseline is deferred enhancement. Threshold chosen because master-bedroom baseline is effectively 0 (Airthings rounds to int). |
-| Include directional context in #27 alert body (indoor vs outdoor) | Adds diagnostic value without more thresholds: "indoor > outdoor" suggests filtration failure; "indoor < outdoor" suggests infiltration overwhelming filter. |
+| `checkIndoorBaseline` uses fixed threshold `5 µg/m³` with cooking-discriminating logic (Option C below) | Backtest against 9mo of master-bedroom data showed threshold=3 would fire ~6.89×/wk (260 alerts over 37.7 weeks, 45% in 18:00-22:00 cooking window → alert fatigue guaranteed). Threshold=5 drops to 2.76/wk. Further discrimination via slope gate + progressive escalation separates cooking (spike → decay) from filtration failure (rise → sustain). |
+| Progressive escalation: WARNING at 30-min sustained, CRITICAL at 90-min sustained | Cooking almost never sustains elevated PM beyond ~45 min (pan comes off heat, fan clears). Filtration failure persists for hours. Two-level alert maps to how humans actually respond: one poke = "investigate", second poke = "confirmed not self-resolving". |
+| Slope gate: suppress WARNING if 30-min median is clearly decaying | A cooking episode in its decay phase doesn't need an alert — it's resolving itself. Compare last-30-min median to previous-30-min median; if negative slope beyond −0.5 µg/m³, no alert. CRITICAL ignores slope (if it sustained 90 min it's real regardless). |
+| Outdoor-clean gate on baseline alert | Only fire when outdoor < 10 µg/m³. Above that, `checkAQI` handles it and `checkIndoorSpike`'s delta-based logic covers the rest. The baseline alert is precisely targeted at "filtration failure when outdoor is calm but indoor isn't" — the Apr 16 scenario. |
+| Include directional context in alert body (indoor vs outdoor) | Adds diagnostic value without more thresholds: "indoor > outdoor" suggests filtration failure; "indoor < outdoor" suggests infiltration overwhelming filter. |
 | Three small PRs, not one | Matches prior sprint discipline (#23 had one commit per unit, clean reverts). Each PR shippable independently; reviewer can land Phase 1 while Phase 2 is drafted. |
 | Phase 2 bundles #25 and #27 in one Apps Script commit | Both modify `HVACMonitor_v3.gs` and share `EXPECTED_SENSORS` / `CONFIG` expansion. Deployment is copy-paste — bundling saves one deploy cycle. |
 
@@ -115,9 +118,14 @@ Not needed — all four issues have concrete, locally-grounded fixes. The Temp S
 
 ### Locked-in decisions (user approved 2026-04-17)
 
-- **Backtest before Phase 2**: yes. A new Unit 7.5 runs `P(30-min rolling median of master_bedroom Indoor_PM25 > 3)` across the 9-month parquet before Phase 2 commits. If base rate >1-2 events/week, tune threshold before merging.
-- **bench_heatmap.py**: migrate (not delete).
+- **Backtest completed** (via `/tmp/backtest_indoor_baseline.py` against 9mo parquet). Results:
+  - Threshold=3 → 6.89 alerts/wk (fail; 45% clustered in 18:00-22:00 cooking window)
+  - Threshold=5 → 2.76 alerts/wk (acceptable with discrimination layer)
+  - Threshold=7 → 1.59 alerts/wk (too tight — misses Apr 16 at median=5)
+  - **Chosen**: `absoluteThreshold = 5` + slope gate + progressive escalation + outdoor-clean gate
+- **bench_heatmap.py**: migrated (not deleted) — shipped in PR #29.
 - **Phase 2 bundling**: #25 and #27 ship together in PR 3.
+- **Intelligent discrimination (Option C)**: progressive escalation (WARNING 30min / CRITICAL 90min) + slope gate (suppress WARNING if PM is decaying) + outdoor gate (only fire when outdoor < 10). Separates cooking's spike-then-decay from filtration failure's rise-and-sustain.
 
 ## High-Level Technical Design
 
@@ -177,12 +185,14 @@ PR 3 — Phase 2  (Apps Script, bundled)
 │      iterate EXPECTED_SENSORS (dict, not lastSeen keys)           │
 │      flag as stopped if !lastSeen[type] OR hoursSince > spec      │
 │                                                                   │
-│    checkIndoorBaseline():  NEW                                    │
-│      filter rows where room == 'master_bedroom' (NOT mirror       │
-│        checkIndoorSpike which doesn't filter by room)             │
-│      take last 6 filtered rows; skip if < 4 (sensor gap)          │
-│      if median(indoor) > absoluteThreshold and not in cooldown:   │
-│        alert WARNING with indoor/outdoor directional context      │
+│    checkIndoorBaseline():  NEW (cooking-vs-failure aware)         │
+│      filter rows where room == 'master_bedroom'                   │
+│      compute now30, prev30, full90 medians                        │
+│      outdoor gate: skip if outdoor PM >= 10                       │
+│      CRITICAL if full90 > 5 with ≥ 15 samples (90 min sustained)  │
+│      WARNING if now30 > 5 AND slope (now30 − prev30) ≥ −0.5       │
+│        (slope gate suppresses cooking's decay-phase alerts)       │
+│      distinct cooldowns for WARN vs CRIT tiers                    │
 │                                                                   │
 │    MONITOR_VERSION constant — logged per runAllChecks()           │
 │    runAllChecks():  wire checkIndoorBaseline in                   │
@@ -382,7 +392,18 @@ PR 3 — Phase 2  (Apps Script, bundled)
 **Approach:**
 - Add a top-of-file constant: `const MONITOR_VERSION = "v3.2026-04-17";` — bumped on every repo edit. `runAllChecks` logs it once per run so the Apps Script execution log grep-ably reveals which repo version is actually deployed (no deploy-drift mystery).
 - Add new top-level CONFIG key `EXPECTED_SENSORS`: dict keyed by sensor_type (`airthings`, `airgradient`, `tempstick`) with `{ maxGapHours: N }` entries. Values per Key Technical Decisions table.
-- Add new top-level CONFIG key `INDOOR_BASELINE`: `{ absoluteThreshold: 3, sustainedMinutes: 30, cooldownMinutes: 60, room: "master_bedroom" }`. Explicit room scoping — this check reads only the canonical indoor sensor, not all rooms.
+- Add new top-level CONFIG key `INDOOR_BASELINE`:
+  ```javascript
+  INDOOR_BASELINE: {
+    room: "master_bedroom",        // canonical indoor sensor for the check
+    absoluteThreshold: 5,          // µg/m³ — validated against 9mo backtest
+    warningMinutes: 30,            // sustained above threshold → WARNING
+    criticalMinutes: 90,           // sustained above threshold → CRITICAL
+    outdoorGate: 10,               // only fire when outdoor PM2.5 < this
+    slopeSuppressThreshold: -0.5,  // µg/m³ drop across 30-min windows → suppress WARNING
+    cooldownMinutes: 60,
+  }
+  ```
 - Leave `DATA_GAP_HOURS: 2` in place as a legacy key; mark with a comment that it's deprecated in favor of per-sensor `EXPECTED_SENSORS[type].maxGapHours`.
 
 **Patterns to follow:**
@@ -439,33 +460,54 @@ PR 3 — Phase 2  (Apps Script, bundled)
 **Files:**
 - Modify: `HVACMonitor_v3.gs` — add function after `checkIndoorSpike` at line 538.
 
-**Approach:**
-- **CRITICAL — do NOT copy-paste-mirror `checkIndoorSpike`'s row-reading logic.** That function reads the last 6 rows regardless of sensor and silently pins `indoor` to 0 when the latest row happens to be a Temp Stick attic row (empty `Indoor_PM25`). Replicating that pattern would make this check accidentally blind, exactly like today's `checkIndoorSpike`.
-- Instead: pull enough recent rows (scan a window of 60 min with safe margin — e.g., last 30 sheet rows) and **filter to `row[COLS.ROOM] === CONFIG.INDOOR_BASELINE.room`** ('master_bedroom') BEFORE any math.
-- After filtering, take the most recent 6 master_bedroom rows. If fewer than 4 rows remain (sensor gap), skip the check entirely and log that this tick had insufficient data — do not alert on 1-2 data points.
-- Compute `median(Indoor_PM25)` over those filtered rows only.
-- If `median > CONFIG.INDOOR_BASELINE.absoluteThreshold` and not in cooldown (`INDOOR_BASELINE_ALERTED` script property within `cooldownMinutes` of now):
-  - Emit WARNING alert with body:
-    - Indoor PM2.5 (current reading + 30-min median from master bedroom)
-    - Outdoor PM2.5 (current reading from outdoor sensor)
-    - Delta interpretation: `indoor > outdoor` → "filtration failure suspected (indoor exceeds outdoor)"; `indoor < outdoor` → "outdoor infiltration exceeding filter capacity"
-    - Suggested action: "Turn on main HVAC fan to circulate air through MERV 13 return filter"
-  - Set `INDOOR_BASELINE_ALERTED` script property (timestamp).
-- Cooldown is **time-based only** (matches `CONFIG.INDOOR_BASELINE.cooldownMinutes = 60`). No condition-based clearing. This is the same semantic as `checkIndoorSpike`'s cooldown — don't introduce a second pattern.
+**Approach** (cooking-vs-filtration-failure discrimination via slope gate + progressive escalation):
+
+1. **Pull a 2h window of rows**, filter to `row[COLS.ROOM] === CONFIG.INDOOR_BASELINE.room` (master_bedroom). **Do NOT copy-paste-mirror `checkIndoorSpike`'s row-reading logic** — that function reads the last 6 rows regardless of sensor and silently pins `indoor` to 0 when the latest row is a Temp Stick attic row (empty `Indoor_PM25`).
+
+2. **Compute three windowed medians** over master_bedroom rows only:
+   - `now30_median` — last 30 min (expect 6 samples at 5-min cadence)
+   - `prev30_median` — 30-60 min ago (next 6 samples back)
+   - `full90_median` — full last 90 min
+   - If `now30` has < 4 samples, skip check entirely (sensor gap; don't alert on thin data).
+
+3. **Outdoor gate** — if the most recent row's `Outdoor_PM25 >= CONFIG.INDOOR_BASELINE.outdoorGate` (10), skip. `checkAQI` handles dirty-outdoor scenarios; this check targets filtration failure with a calm outdoor backdrop.
+
+   **Windowing note**: the outdoor check reads only the single most-recent row, not a window. For WARNING (30-min window), that matches the indoor window closely enough. For CRITICAL (90-min window), there's an edge case where outdoor was elevated for 85 of 90 min and just dropped to 8 at the current tick — CRITICAL would fire on a 90-min indoor median that was partly outdoor-driven. Accepted by design for v1: (a) the Apr 16 scenario this check targets has a consistently calm outdoor backdrop; (b) if it surfaces, a future enhancement can window the outdoor gate.
+
+4. **Progressive escalation**:
+   - If `full90_median > absoluteThreshold` AND we have ≥ 15 samples (enough for real 90-min coverage) → **CRITICAL**. Skip slope check — if it's sustained 90+ min it's real, period.
+   - Else if `now30_median > absoluteThreshold` → **WARNING candidate**, apply slope gate (step 5).
+   - Else → no alert.
+
+5. **Slope gate** (WARNING only): if `now30_median - prev30_median < slopeSuppressThreshold` (−0.5), suppress. The 30-min median is dropping meaningfully → this is a cooking event already resolving itself; the alert would be noise.
+
+6. **Cooldown**: `INDOOR_BASELINE_ALERTED` script property holds the timestamp of the last alert. Within `cooldownMinutes` of now → skip (time-based only, same semantic as `checkIndoorSpike`). After firing, set the property. **Distinct cooldowns for WARNING vs CRITICAL** — a WARNING doesn't suppress a later CRITICAL, because escalation is the whole point. Two properties: `INDOOR_BASELINE_WARN_AT`, `INDOOR_BASELINE_CRIT_AT`.
+
+   **Cross-tier cooldown semantics**: when CRITICAL fires, only `INDOOR_BASELINE_CRIT_AT` is set; `INDOOR_BASELINE_WARN_AT` is NOT touched. Consequence: after a CRITICAL resolves, a fresh WARNING is eligible once `now - WARN_AT >= cooldownMinutes` (60 min from the *last* WARNING, whenever that was). This may mean a WARNING that preceded the escalation still governs a post-CRITICAL bounce. This is intentional — the WARN cooldown is about "don't re-pester on the same warn-worthy event," not about superseding escalation. Implementers should NOT reset `WARN_AT` when CRITICAL fires.
+
+7. **Alert body** (shared template, level-dependent severity):
+   - Level + headline (`⚠️ Indoor PM elevated` vs `🚨 Indoor PM elevated and not resolving`)
+   - Indoor PM2.5: current reading + 30-min median + 90-min median
+   - Outdoor PM2.5: current reading
+   - Directional context: `indoor > outdoor` → "filtration failure suspected"; `indoor < outdoor` → "outdoor infiltration exceeding filter capacity"
+   - Suggested action: "Turn on main HVAC fan to circulate air through MERV 13 return filter. If already on, check filter condition."
 
 **Patterns to follow:**
 - `checkIndoorSpike` at 476-538 is the template ONLY for the cooldown + alert-object + `props.setProperty` lifecycle. Do NOT copy its row-reading logic; build fresh filtering on `COLS.ROOM`.
 
 **Test scenarios:**
 - Happy path: indoor 0 µg/m³ (normal) → no alert.
-- Happy path: indoor 2.5 µg/m³ (below threshold) → no alert.
-- Edge case: indoor 3.1 µg/m³ for 30+ min → WARNING alert fires with directional context.
-- Edge case: indoor 5, outdoor 4.5 (Apr 16 19:00 scenario) → fires with "indoor > outdoor: filtration failure suspected" subtext.
-- Edge case: indoor 5, outdoor 100 (hypothetical wildfire) → fires with "infiltration exceeding filter capacity" subtext; `checkAQI` also fires; both are independently useful.
-- Edge case: cooldown suppresses re-alert within 60 min; allows re-alert after cooldown expires.
-- **Critical: filter correctness** — scan window contains 3 master_bedroom + 2 second_bedroom + 1 attic row → only the 3 master_bedroom rows participate in the median; attic/second_bedroom excluded. The test asserts `attic row's Indoor_PM25 = "" (or NaN)` does not appear in the computed median.
-- Edge case: fewer than 4 master_bedroom rows in the window (sensor gap) → check skips silently, no alert (don't fire on 1 data point).
-- Integration: historical replay of Apr 16 18:00-23:59 → alert fires between 18:15-18:45 (R8). No alert on Apr 15 under same outdoor conditions (R9).
+- Happy path: indoor 2-4 µg/m³ (below threshold=5) → no alert.
+- **Cooking pattern (slope gate)**: indoor series `[9, 8, 7, 6, 5, 5]` → sorted `[5,5,6,7,8,9]` → `now30_median = (6+7)/2 = 6.5` > 5. `prev30_median` ~8 (earlier peak of the same cooking event) → slope = −1.5 < slopeSuppressThreshold of −0.5 → **suppress**. Tests that pan-off-heat cooking in its decay phase does NOT fire WARNING.
+- **Apr 16 WARNING (rising slope)**: indoor series `[3, 4, 5, 6, 6, 6]` → sorted `[3,4,5,6,6,6]` → `now30_median = (5+6)/2 = 5.5` > 5. Outdoor 4.5 < gate 10. Slope vs prev30_median ≈ 3 gives slope = +2.5 ≥ −0.5 → **fires WARNING** with "indoor > outdoor: filtration failure suspected" subtext.
+  - Note: threshold comparison is strict `>`. A now30_median of exactly 5.0 would NOT fire; the series must produce > 5.
+- **Apr 16 CRITICAL escalation**: 90 min of sustained elevation (indoor ≥ 5 across full window) → CRITICAL fires regardless of slope. Uses `INDOOR_BASELINE_CRIT_AT` property, independent of `INDOOR_BASELINE_WARN_AT`.
+- **Outdoor-gate suppression**: indoor 7, outdoor 20 → no alert (outdoor ≥ 10; `checkAQI` handles).
+- Edge case: WARNING fires, then 30 min later 90-min median still elevated → CRITICAL escalates (WARNING cooldown doesn't block the CRITICAL tier).
+- Edge case: cooldown within same tier — two WARNING-worthy events 30 min apart → only one fires, second suppressed until cooldown expires.
+- **Critical: filter correctness** — scan window contains 3 master_bedroom + 2 second_bedroom + 1 attic row → only master_bedroom rows participate in the medians; attic/second_bedroom excluded. The test asserts `attic row's Indoor_PM25 = "" (or NaN)` does not appear in the computed median.
+- Edge case: fewer than 4 master_bedroom rows in the 30-min window (sensor gap) → check skips silently, no alert (don't fire on 1-2 data points).
+- **Backtest integration** (uses the 9-month parquet directly): simulated replay of the full period should produce ≤ ~3 alerts/week on average, with the Sept 2025 bad-filter period producing escalated CRITICALs (the outage the filter substitution caused).
 
 **Verification:**
 - `test()` assertions added in Unit 11 confirm Apr 16 and Apr 15 replay outcomes, and confirm the sensor-filter test case.
