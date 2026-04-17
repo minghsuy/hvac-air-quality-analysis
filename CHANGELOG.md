@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-04-17
+
 ### Added
 - **`checkIndoorBaseline` — NEW Apps Script alert** (#32, closes #27). Fires when master-bedroom `Indoor_PM25` sustains above 5 µg/m³ while outdoor is calm (< 10 µg/m³ gate). Option C discrimination: WARNING at 30-min sustained (with slope gate to suppress cooking's decay phase) + CRITICAL at 90-min sustained (regardless of slope). Distinct cooldowns per tier. Backtested against 9 months of data: **1.38 alerts/wk** (0.40 WARN + 0.98 CRIT), down from 6.89/wk at the original threshold=3 proposal.
 - **`MONITOR_VERSION` constant + per-`runAllChecks()` logging** (#32) — deploy-drift between repo and the paste-in-Apps-Script deployment is now grep-able in the execution log, not a mystery.
@@ -214,7 +216,8 @@ Analysis of 82,791 readings revealed:
 - Health correlation tracking capabilities
 - 5-minute automated data collection via cron
 
-[Unreleased]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/minghsuy/hvac-air-quality-analysis/compare/v0.2.0...v0.3.0
