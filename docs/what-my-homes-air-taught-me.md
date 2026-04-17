@@ -4,6 +4,8 @@ Someone I loved lived 20 years next to a freeway. I wanted to understand what th
 
 None of this is original science. It's what happens when you take a single home seriously as a measurement site instead of trusting the labels on the filters.
 
+*A personal note on why I measured rather than just trusted:* I work from home in a condo finished in early 2020 — airtight by modern energy code, which is great for utility bills and difficult for keeping the air actually fresh behind a closed door. I noticed I felt genuinely different at my desk on days the ventilation was working well versus days it wasn't — less of the afternoon haze I'd always blamed on lunch. That's anecdotal; I can't attribute it rigorously. But combined with a kid with asthma whose doctor asked us to keep windows closed, it was enough to make me want to fix the air as the root cause rather than keep compensating for it. The measurement system grew out of not trusting my own sense of whether the fix was actually working.
+
 ---
 
 ## Four findings from nine months
@@ -50,7 +52,7 @@ This part is not about my house. It's about why my house is the way it is.
 - **Norway, TEK17 §13-2**: performance-based residential ventilation — at least 1.2 m³/h per m² of floor area while occupied, 26 m³/h per planned bed in bedrooms, extraction from kitchen/bath/toilet. Balanced mechanical ventilation with heat recovery is the practical way to meet both this and the chapter 14 energy rules; F7 (~MERV 13) supply-air filtration is recommended in separate Arbeidstilsynet workplace-air guidance rather than TEK17 itself.
 - **Germany, GEG §6 + DIN 1946-6**: every new or renovated dwelling requires a Lüftungskonzept (ventilation concept). The legal duty is in the Gebäudeenergiegesetz; DIN 1946-6 is the recognised engineering standard for satisfying it.
 
-**The US has no federal residential indoor air quality standard.** The minimum required HVAC filtration in ASHRAE 62.2 is MERV 6 — catches dust bunnies and essentially nothing of combustion-particle or wildfire-smoke consequence. No federal indoor CO2 target. No VOC emissions labeling on building materials. No airtightness requirement comparable to European codes. California leads among US states (Title 24 requires mechanical ventilation since 2013) but its airtightness threshold is far more lenient than Norway's.
+**The US gap is specifically on filtration, not on whether mechanical ventilation is required.** ASHRAE 62.2 sets performance-based airflow requirements (roughly ~90 CFM continuous for a 2,000 ft² / 3-bedroom home — about 30–50% less than Norway's 1.2 m³/h per m² for the same house) and prescribes a **MERV 6 minimum** on ducted systems. MERV 6 catches dust, pollen, and larger debris but not the sub-micron combustion particles that dominate near-road PM2.5 or wildfire smoke. A growing number of states (California Title 24 since 2013, others since) have raised their residential minimum to MERV 13 in new construction; most have not. There is no federal VOC emissions labeling on building materials and no federal indoor CO2 target.
 
 The three-layer retrofit I have — air-sealing, ERV with MERV 13 supply filtration, MERV 13 HVAC recirculation — is a ~$3,000 DIY approximation of what Norwegian, Japanese, French, and German families get by default from the building code. The technology is not new. The science is not disputed. The gap is regulatory.
 
@@ -61,7 +63,7 @@ For the full policy and research comparison: [The Freeway Air Problem](https://g
 ## What you can actually do this week
 
 1. **Buy a CO2 monitor** (~$80, Aranet4 or similar). Put it in the bedroom where the people you most care about sleep. Check it at 6am. This is the cheapest, most visceral conversion from "air quality is abstract" to "oh, that's what 1,800 ppm feels like."
-2. **Check what MERV rating your current HVAC filter is.** The label on the filter itself will say. If it's MERV 6 or MERV 8, that's the US code minimum — it catches almost nothing of consequence for traffic emissions or wildfire smoke. Swap to MERV 13 if your blower motor can handle the pressure drop (ECM motors: almost always yes; PSC motors: check first, 4-5" media filters keep the pressure drop low).
+2. **Check what MERV rating your current HVAC filter is.** The label on the filter itself will say. MERV 6 and MERV 8 are the common federal / IRC minimums — fine for protecting the blower and catching larger dust and pollen, but they don't meaningfully reduce PM2.5 or combustion particles. MERV 13 is the threshold where sub-micron filtration starts. If you want to swap up: ECM blower motors can almost always handle a 1" MERV 13 pressure drop; PSC motors should check first, and 4–5" deep-media MERV 13 cartridges keep the pressure drop close to what a 1" MERV 8 imposes.
 3. **If you live within 500 meters of a freeway**, the [California Air Resources Board research](https://ww2.arb.ca.gov/news/air-resources-board-approves-land-use-planning-handbook) puts your background PM2.5 at 45-95% above urban baseline. A MERV 13 filter and a sealed building envelope matter more for you than for most.
 
 ---
