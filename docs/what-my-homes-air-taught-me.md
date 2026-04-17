@@ -1,10 +1,12 @@
 # What my home's air taught me
 
-Someone I loved lived 20 years next to a freeway. I wanted to understand what that meant for the people I love now. Nine months of continuous measurement later — three sensors, 142,000 readings across indoor PM2.5, CO2, VOCs, radon, outdoor PM2.5, temperature, and humidity — here's what the data actually says.
+Someone I loved lived 20 years next to a freeway. I wanted to understand what that meant for the people I love now.
 
-None of this is original science. It's what happens when you take a single home seriously as a measurement site instead of trusting the labels on the filters.
+The trigger was more mundane. A few years ago my gas furnace kept tripping its overheat-safety cutoff. My CO2 sensor was reading unusually high at the same time. An HVAC company came out and found that a previous installer had clamped the air duct leading to my room — the airflow problem was causing both the overheating and the bad air exchange. I was mad enough to scrap the furnace and replace it with a heat pump and an ERV. The continuous monitoring system grew out of wanting a signal I could trust the next time a human told me *"it's fine."*
 
-*A personal note on why I measured rather than just trusted:* I work from home in a condo finished in early 2020 — airtight by modern energy code, which is great for utility bills and difficult for keeping the air actually fresh behind a closed door. I noticed I felt genuinely different at my desk on days the ventilation was working well versus days it wasn't — less of the afternoon haze I'd always blamed on lunch. That's anecdotal; I can't attribute it rigorously. But combined with a kid with asthma whose doctor asked us to keep windows closed, it was enough to make me want to fix the air as the root cause rather than keep compensating for it. The measurement system grew out of not trusting my own sense of whether the fix was actually working.
+I work from home in a condo finished in early 2020 — airtight by modern energy code, which is great for utility bills and difficult for keeping air actually fresh behind a closed door. And with a kid whose asthma rules out the cheap "open a window" fix, we couldn't just let the seal leak. Nine months of continuous measurement later — three sensors, 142,000 readings across indoor PM2.5, CO2, VOCs, radon, outdoor PM2.5, temperature, and humidity — here's what the data actually says.
+
+None of this is original science. It's what happens when you take a single home seriously as a measurement site instead of trusting the labels on the filters or the installer's word.
 
 ---
 
@@ -16,9 +18,9 @@ Two people in a closed bedroom with the door shut can push CO2 from a ~420 ppm o
 
 The measurement insight on top of that: in my data, indoor CO2 and indoor VOCs correlate at ρ = 0.65. Both rise together when ERV flow is insufficient, because in this house the VOCs are predominantly occupant/activity-sourced rather than material-off-gassed. That correlation isn't universal — homes with heavy new-material off-gassing produce VOCs independent of ventilation, breaking the pairing — but in a household like mine, an inexpensive CO2 monitor has served as a reasonable under-ventilation proxy for VOCs too. Not a canary for every indoor pollutant. A canary for the ones your family makes.
 
-### 2. Two filters with the same "MERV 13" rating differed by 24 percentage points
+### 2. An installer substitution the sensors caught before we did
 
-For six weeks in September-October 2025, my OEM-specified ERV filter was temporarily replaced with a generic MERV-13-rated HVAC-style panel filter of a different form factor. Same home, same HVAC, same outdoor air, same sensors. Only the filter changed.
+For six weeks in September-October 2025, my OEM-specified ERV filter was temporarily replaced with a generic MERV-13-rated HVAC-style panel filter of a different form factor — a substitution made during a service visit that a human trusting the "it's MERV 13, same thing" assurance would have accepted. Same home, same HVAC, same outdoor air, same sensors. Only the filter changed.
 
 Measured indoor PM2.5 filtration efficiency:
 - OEM MERV 13: ~95% median (higher, but partly limited by sensor resolution — see caveats)
