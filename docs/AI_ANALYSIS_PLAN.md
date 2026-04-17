@@ -1,5 +1,14 @@
 # AI-Powered Air Quality Analysis with RAPIDS AI & Ollama
 
+> **Status: aspirational plan document from late 2025, partially superseded.**
+> The alerts, ERV-state inference, and anomaly attribution described below were
+> implemented in [`HVACMonitor_v3.gs`](https://github.com/minghsuy/hvac-air-quality-analysis/blob/main/HVACMonitor_v3.gs) (Google Apps Script) and the
+> [Streamlit dashboard](dashboard-architecture.md). The RAPIDS/cuDF GPU path was
+> not built — production analysis uses pandas + scipy. The example CLI outputs
+> below (efficiencies, replacement dates) are **illustrative mockups**, not
+> findings from real data. For actual measured findings see
+> [findings.md](findings.md) and the [verification report](reports/findings.html).
+
 ## Overview
 
 Build an analysis system for historical air quality data that:

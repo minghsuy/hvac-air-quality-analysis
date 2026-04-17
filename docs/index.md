@@ -1,25 +1,30 @@
 # HVAC Air Quality Analysis
 
-98,000+ sensor readings across 6+ months, analyzing indoor air quality with Spearman correlation, LOWESS anomaly detection, and efficiency-based filter monitoring.
+142,000+ sensor readings across 9 months (July 2025 – April 2026). Continuous indoor + outdoor measurement of PM2.5, CO2, VOCs, radon, temperature, and humidity in one house.
+
+> **Start here if you're new: [What my home's air taught me](what-my-homes-air-taught-me.md)** — four findings in ~1,500 words, parent-audience first.
 
 ## What This Project Does
 
 Three sensors (Airthings View Plus, AirGradient Open Air, AirGradient ONE) collect 14 air quality metrics every 5 minutes. A Streamlit dashboard with Parquet caching makes this data explorable in real time.
 
-**Key insight**: MERV 13 filters maintain >85% efficiency for 120+ days — not the 45 days manufacturers recommend.
+**Headline finding** (Sept–Oct 2025 natural experiment): two filters carrying the same "MERV 13" label differed by ~24 percentage points in measured PM2.5 filtration in the same installation. OEM ~95%, generic substitute 69%. MERV rating is a minimum threshold, not a performance guarantee. Full analysis in the [verification report](reports/findings.html).
 
 ## Documentation
 
-- [Dashboard Architecture](dashboard-architecture.md) — Why Streamlit, Parquet cache benchmarks, 3-layer caching strategy
-- [Methodology](methodology.md) — Why Spearman over Pearson, LOWESS anomaly detection, pre-aggregation
-- [Findings](findings.md) — Correlation analysis results, filter longevity, ERV tradeoff
-- [Data Quality](data-quality.md) — Column shift fix, sensor placement, data gap handling
+- [What my home's air taught me](what-my-homes-air-taught-me.md) — narrative summary, four findings
+- [Findings](findings.md) — numeric summary and per-cycle filter data
+- [Verification report](reports/findings.html) — interactive charts, reproducible from `scripts/analysis/verify_findings.py`
+- [Methodology](methodology.md) — Spearman vs. Pearson, LOWESS anomaly detection, seasonal thresholds
+- [Dashboard Architecture](dashboard-architecture.md) — Streamlit + Parquet caching benchmarks
+- [Data Quality](data-quality.md) — column-shift fix, sensor placement, data gap handling
+- [Lessons Learned](LESSONS_LEARNED.md) — measurement surprises and course corrections
 
 ## Interactive Charts
 
-- [CO₂ Bedroom Levels](charts/co2_bedroom_levels.html) — ERV keeps bedrooms below cognitive impairment threshold
-- [Filter Efficiency Over Time](charts/filter_efficiency.html) — MERV 13 lasts 120+ days, not the 45 manufacturers claim
-- [Indoor vs Outdoor PM2.5](charts/indoor_vs_outdoor_pm25.html) — Filtration protection during bad air days
+- [CO₂ Bedroom Levels](charts/co2_bedroom_levels.html) — ERV keeps bedrooms below the cognitive-impairment threshold
+- [Filter Efficiency Over Time](charts/filter_efficiency.html) — full-history efficiency series
+- [Indoor vs Outdoor PM2.5](charts/indoor_vs_outdoor_pm25.html) — filtration protection during bad air days
 
 ## Quick Links
 

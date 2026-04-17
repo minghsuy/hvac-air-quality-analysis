@@ -51,13 +51,13 @@ anomalies = residuals > 1.5 * residuals.std()
 
 ## Pre-aggregation Strategy
 
-Raw data: 98,000+ rows at 5-minute intervals. Pages need rolling averages and daily ranges, not individual readings.
+Raw data: 142,000+ rows at 5-minute intervals (9 months, July 2025 onward). Pages need rolling averages and daily ranges, not individual readings.
 
 ### Aggregation Levels
 
 ```
 Raw (5-min)  →  Hourly mean  →  Daily mean/min/max
-  98,000         ~16,000          ~200 per metric
+  142,000        ~24,000          ~270 per metric
 ```
 
 All aggregations are computed once on data load and stored in dictionaries keyed by `(room, metric)`:

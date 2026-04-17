@@ -4,7 +4,7 @@
 
 ## Key Correlations (Spearman)
 
-Analysis of 98,000+ readings from the primary bedroom sensor reveals five notable metric relationships:
+Analysis of 142,000+ readings from the primary bedroom sensor reveals five notable metric relationships:
 
 | Pair | rho | Direction | Interpretation |
 |------|-----|-----------|----------------|
@@ -59,7 +59,19 @@ Running the verification against the data surfaced a previously-undocumented **n
 
 ### Cost Impact
 
-Replacing filters on a fixed 45–90 day schedule costs $130–$910/year depending on filter quality. Data-driven replacement (replace when efficiency drops, verified across cycles 2 and 3) reduces this by 60–70%. But the Sept-Oct 2025 natural experiment also shows that **the cheapest filter available at the same MERV rating is not necessarily a cost saving** — if its real-world efficiency is materially lower, the home is taking the pollution hit the monitoring system is supposed to prevent.
+For this household, at current filter prices (OEM MERV 13 ERV: $100; 4" MERV 13 return: $130; zone MERV 12: $10 × 2):
+
+| Filter | Manufacturer schedule | Measured interval | Annual cost at manufacturer schedule | Annual cost at measured interval | Saved |
+|---|---|---|---|---|---|
+| ERV MERV 13 | 90 days | 116–151 days (avg 133) | $406 | $274 | **~$132** |
+| Main MERV 13 (4") | 8–12 months | ~6 months (no data-driven signal available) | ~$130 | ~$260 | — |
+| Zone MERV 12 × 2 | 90 days (fixed, not measurable) | 90 days | $81 | $81 | — |
+
+**Realized annual savings: ~$130/year on the ERV filter.** The 4" return filter is replaced on a conservative 6-month interval because master-bedroom efficiency cannot isolate its contribution; condition-based replacement there would require either main-only differential instrumentation or a different analysis approach. The zone filters are too small in impact and too cheap to justify measurement — replaced on fixed 90-day interval.
+
+**Savings scale with filter price**, not with filter count. Premium setups with $200–300 MERV 13 filters save 2–3× more per filter than this household. A ~$200 outdoor sensor pays back in roughly 1.5 years at these prices; faster for households with more expensive filters.
+
+The Sept–Oct 2025 natural experiment also shows that **the cheapest filter at the same MERV rating is not necessarily a cost saving** — if its real-world efficiency is 20+ percentage points lower, the household is taking the pollution hit the monitoring system is supposed to prevent.
 
 ### Why Manufacturer Specs Are Conservative
 
