@@ -54,12 +54,14 @@ patterns=(
     '(airthings|airgradient|tempstick|ecobee|nest)_[A-Fa-f0-9]{4,}'
 )
 for pat in "${patterns[@]}"; do
-    # Only scan ADDED lines (^+ prefix). Deletions of legitimate documentation
-    # that mentions these patterns (e.g., removing a pre-commit helper script)
-    # should not trip the scan.
-    if git diff "$range" -U0 --no-color 2>/dev/null | grep -E '^\+' | grep -Ei "$pat" >/dev/null; then
+    # Only scan ADDED content lines (^+ followed by non-+). The ^\+[^+] guard
+    # excludes diff file headers like '+++ b/path' — otherwise a path that
+    # legitimately contains a pattern (e.g., a dir named tempstick_abcd1234/)
+    # would trip the scan. Deletions of legitimate documentation that mentions
+    # these patterns are also ignored by design.
+    if git diff "$range" -U0 --no-color 2>/dev/null | grep -E '^\+[^+]' | grep -Ei "$pat" >/dev/null; then
         echo "FAIL: pattern /$pat/ matched in added lines of pushed diff:"
-        git diff "$range" -U0 --no-color | grep -E '^\+' | grep -Ei "$pat" | head -3
+        git diff "$range" -U0 --no-color | grep -E '^\+[^+]' | grep -Ei "$pat" | head -3
         exit 1
     fi
 done
@@ -102,7 +104,7 @@ while IFS= read -r f; do
     [[ -z "$f" ]] && continue
     case "$f" in
         "$DGX_PINNED")                                              : ;;  # systemd-pinned
-        *.template.py|*.template.csv|*.template.json)               : ;;  # templates allowed
+        *_template.*|*.template.*)                                  : ;;  # templates allowed (both naming styles)
         *.py)
             echo "FAIL: new root-level .py file '$f' — move to scripts/utils/ or scripts/collectors/"
             exit 1 ;;

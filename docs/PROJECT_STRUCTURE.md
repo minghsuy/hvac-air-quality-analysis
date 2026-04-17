@@ -81,7 +81,7 @@
 | `HVACMonitor_v3.gs` | Copy-paste-ready Apps Script source; README surfaces it as a top-level artifact. |
 | `README.md`, `CLAUDE.md`, `LICENSE`, `CHANGELOG.md` | GitHub and tooling conventions expect these at root. |
 | `pyproject.toml`, `uv.lock`, `.env.example`, `.gitignore`, `cliff.toml`, `.pre-commit-config.yaml` | Tooling config files; tooling looks for them at repo root. |
-| `*.template.csv`, `*.template.py`, `*.template.json` | Templates allowed at root under the `!*_template.*` gitignore rule; copies become gitignored real files. |
+| Template files (both `*_template.*` and `*.template.*` naming) | Templates allowed at root — e.g. `filter_changes_template.csv`, `sensors.template.json`. Copies become gitignored real files. |
 
 ## Where new files should land
 
