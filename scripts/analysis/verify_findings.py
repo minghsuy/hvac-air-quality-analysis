@@ -382,7 +382,7 @@ def build_html(
           researcher-relevant finding in the dataset.
         </p>
 
-        <h2>1. Filter periods and the natural experiment</h2>
+        <h2 id="filter-cycles">1. Filter periods and the natural experiment</h2>
         {df_to_html_table(cycles, "Per-period measured efficiency (master bedroom Airthings)")}
         {cycle_div}
 
@@ -414,7 +414,7 @@ def build_html(
           only monitoring distinguishes them.</em>
         </div>
 
-        <h2>2. Feb 7-8 2026 alert escalation</h2>
+        <h2 id="feb-case">2. Feb 7-8 2026 alert escalation</h2>
         <p>
           At ~13:00 on Feb 7, master bedroom filter efficiency dropped from a ~95% baseline and
           continued to decline overnight into Feb 8. The alerting system (HVACMonitor v3) escalated

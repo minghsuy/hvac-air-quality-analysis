@@ -86,10 +86,10 @@ A 2-week data gap exists in October 2025. This corresponds to the migration from
 
 | Metric | Value |
 |--------|-------|
-| Total readings | 98,000+ |
+| Total readings | 142,000+ |
 | Collection interval | Every 5 minutes |
-| Sensors | 3 (2 indoor, 1 outdoor) |
+| Sensors | 3 (2 indoor, 1 outdoor) + 1 attic (Temp Stick) |
 | Metrics per reading | Up to 14 numeric fields |
-| Date range | 6+ months |
+| Date range | July 2025 – present (~9 months as of April 2026) |
 | Storage | Google Sheets (primary), Parquet cache (dashboard) |
-| Parquet file size | ~4 MB |
+| Parquet file size | ~3 MB |
