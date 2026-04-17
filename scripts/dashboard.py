@@ -13,8 +13,8 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
+
+from _sheets_loader import load_sheet_as_df
 
 load_dotenv()
 
@@ -49,71 +49,17 @@ COLORS = {
 
 
 def _fetch_from_sheets():
-    """Fetch raw data from Google Sheets API (~3.5s)."""
+    """Fetch raw data from Google Sheets API (~3.5s) via the shared loader."""
     spreadsheet_id = os.getenv("GOOGLE_SPREADSHEET_ID")
     sheet_tab = os.getenv("GOOGLE_SHEET_TAB", "")
     creds_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "google-credentials.json")
-    credentials = service_account.Credentials.from_service_account_file(
-        creds_path, scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"]
-    )
-    service = build("sheets", "v4", credentials=credentials)
-    sheet = service.spreadsheets()
-    range_name = f"{sheet_tab}!A:R" if sheet_tab else "A:R"
-    result = sheet.values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
-    values = result.get("values", [])
-
-    headers = values[0]
-    n_cols = len(headers)
-    padded, orig_cols = [], []
-    for row in values[1:]:
-        orig_cols.append(len(row))
-        r = row + [""] * (n_cols - len(row)) if len(row) < n_cols else row[:n_cols]
-        padded.append(r)
-
-    df = pd.DataFrame(padded, columns=headers)
-    df["_orig_cols"] = orig_cols
-    df["Timestamp"] = pd.to_datetime(df["Timestamp"], errors="coerce")
-    for col in [
-        "Indoor_PM25",
-        "Outdoor_PM25",
-        "Filter_Efficiency",
-        "Indoor_CO2",
-        "Outdoor_CO2",
-        "Indoor_VOC",
-        "Indoor_NOX",
-        "Indoor_Temp",
-        "Indoor_Humidity",
-        "Indoor_Radon",
-        "Outdoor_Temp",
-        "Outdoor_Humidity",
-        "Outdoor_VOC",
-        "Outdoor_NOX",
-    ]:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    shifted = df["_orig_cols"] < 18
-    for col in [
-        "Indoor_Temp",
-        "Indoor_Humidity",
-        "Indoor_Radon",
-        "Outdoor_CO2",
-        "Outdoor_Temp",
-        "Outdoor_Humidity",
-        "Outdoor_VOC",
-        "Outdoor_NOX",
-    ]:
-        if col in df.columns:
-            df.loc[shifted, col] = np.nan
-
-    df = df.dropna(subset=["Timestamp"]).sort_values("Timestamp").reset_index(drop=True)
-    return df
+    return load_sheet_as_df(spreadsheet_id, sheet_tab, creds_path)
 
 
 def _save_parquet(df):
     """Save cleaned DataFrame to local Parquet cache."""
     os.makedirs(os.path.dirname(PARQUET_CACHE), exist_ok=True)
-    df.drop(columns=["_orig_cols"], errors="ignore").to_parquet(PARQUET_CACHE)
+    df.to_parquet(PARQUET_CACHE)
 
 
 def load_raw(force_refresh=False):
