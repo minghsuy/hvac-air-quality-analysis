@@ -213,6 +213,12 @@ def compute_cycles(df: pd.DataFrame) -> pd.DataFrame:
         )
         days_above_85 = int((daily >= 85).sum())
         med_eff = valid["Filter_Efficiency"].median() if len(valid) else float("nan")
+        # Airthings rounds indoor PM2.5 to integers; when true indoor PM is <0.5 the
+        # sensor reports 0 and efficiency pegs at 100% regardless of real filtration.
+        # Track what fraction of valid readings came from this rounding-to-zero case so
+        # readers can judge how much of a high median is "near-perfect filtration" vs
+        # "below sensor resolution."
+        indoor_zero_frac = float((valid["Indoor_PM25"] == 0).mean()) if len(valid) else float("nan")
         rows.append(
             {
                 "period": name,
@@ -223,6 +229,9 @@ def compute_cycles(df: pd.DataFrame) -> pd.DataFrame:
                 "valid_readings": len(valid),
                 "median_eff": round(med_eff, 1) if pd.notna(med_eff) else None,
                 "days_ge_85": days_above_85,
+                "indoor_zero_pct": round(100 * indoor_zero_frac, 0)
+                if pd.notna(indoor_zero_frac)
+                else None,
             }
         )
     return pd.DataFrame(rows)
@@ -323,7 +332,7 @@ def build_html(
 ) -> str:
     ts_min = df["Timestamp"].min()
     ts_max = df["Timestamp"].max()
-    generated = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
+    generated = pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d %H:%M UTC")
 
     css = dedent(
         """
@@ -345,10 +354,13 @@ def build_html(
         """
     )
 
+    def _fmt(x: float) -> str:
+        return f"{x:.2f}" if pd.notna(x) else "N/A"
+
     prepost_line = (
         f"Indoor PM2.5 (AirGradient, second bedroom): "
-        f"AM median {prepost['am_median']:.2f} µg/m³ (n={prepost['am_n']}) → "
-        f"PM median {prepost['pm_median']:.2f} µg/m³ (n={prepost['pm_n']})"
+        f"AM median {_fmt(prepost['am_median'])} µg/m³ (n={prepost['am_n']}) → "
+        f"PM median {_fmt(prepost['pm_median'])} µg/m³ (n={prepost['pm_n']})"
     )
 
     body = dedent(
@@ -436,9 +448,23 @@ def build_html(
           relative dynamics and cross-sensor agreement are what the findings rest on.
         </div>
         <div class="caveat">
-          <strong>Sensor precision difference.</strong> Airthings rounds PM2.5 to whole numbers;
-          AirGradient reports to 0.01 µg/m³. Case-study before/after PM2.5 medians use AirGradient
-          for this reason.
+          <strong>Sensor precision: integer rounding inflates high efficiency medians.</strong>
+          Airthings rounds indoor PM2.5 to whole numbers (0, 1, 2, ...). When true indoor PM is
+          below 0.5 µg/m³, the sensor reports 0, and computed efficiency pegs at 100% regardless of
+          the filter's real performance. The cycles table above includes an <code>indoor_zero_pct</code>
+          column showing what fraction of each period's valid readings came from this rounding-to-zero
+          case. A period with high indoor_zero_pct and median efficiency = 100% is reporting "indoor
+          below sensor resolution," not "perfect filtration." The first OEM period is affected by
+          this. AirGradient (0.01 µg/m³ precision) is used for case-study indoor PM2.5 medians
+          where precision matters.
+        </div>
+        <div class="caveat">
+          <strong>Shared indoor sensor: efficiency reflects combined upstream filtration.</strong>
+          All master-bedroom efficiency values come from the same Airthings sensor and the same
+          outdoor reference. They reflect the combined effect of every filter in the air path (ERV,
+          main HVAC, zone filter), not any one filter's independent performance. The 93.9% cycle-2
+          and 93.7% zone-cycle-1 figures overlap in the Nov 10 2025 – Feb 8 2026 window and are not
+          independent measurements; the 0.2 percentage-point gap is within sampling noise.
         </div>
         <div class="caveat">
           <strong>Seasonal measurement coverage.</strong> Efficiency calculation requires outdoor
