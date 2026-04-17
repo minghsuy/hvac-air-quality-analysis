@@ -315,7 +315,14 @@ def get_tempstick_data():
     try:
         response = requests.get(
             f"https://tempstickapi.com/api/v1/sensor/{TEMP_STICK_SENSOR_ID}",
-            headers={"X-API-KEY": TEMP_STICK_API_KEY},
+            headers={
+                "X-API-KEY": TEMP_STICK_API_KEY,
+                # The edge WAF started 429-ing the default python-requests UA on
+                # 2026-04-13, silently dropping attic data. A descriptive UA
+                # passes the filter. Don't fake a browser UA — honest
+                # identification is fine and works.
+                "User-Agent": "hvac-air-quality-analysis/0.4 (+https://github.com/minghsuy/hvac-air-quality-analysis)",
+            },
             timeout=10,
         )
 
