@@ -86,4 +86,36 @@ if echo "$changed_files" | grep -qE 'docs/reports/findings\.html|scripts/analysi
     uv run --quiet python scripts/analysis/screenshot_report.py
 fi
 
+# 8. Anti-mess guardrail: block new junk at repo root
+#    The DGX-pinned collector is exempt (systemd hardcodes its absolute path);
+#    everything else new must go under scripts/, docs/, or data/.
+echo "-> root-junk scan"
+added=$(git diff --diff-filter=A --name-only "$range" 2>/dev/null || true)
+root_added=$(echo "$added" | grep -E '^[^/]+$' || true)
+
+DGX_PINNED="collect_with_sheets_api_v2.py"
+
+while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    case "$f" in
+        "$DGX_PINNED")                                              : ;;  # systemd-pinned
+        *.template.py|*.template.csv|*.template.json)               : ;;  # templates allowed
+        *.py)
+            echo "FAIL: new root-level .py file '$f' — move to scripts/utils/ or scripts/collectors/"
+            exit 1 ;;
+        *.csv|*.json|*.jsonl)
+            echo "FAIL: new root-level data file '$f' — move under data/ or .gitignore it"
+            exit 1 ;;
+        *_debug.*|*_tmp.*|*_test_export.*|Screenshot*.png|Screenshot*.jpg)
+            echo "FAIL: debug-pattern file '$f' at root — rename or .gitignore it"
+            exit 1 ;;
+    esac
+done <<<"$root_added"
+
+# Block any *.egg-info/ dir — pyproject.toml declares package = false
+if echo "$added" | grep -q '\.egg-info/'; then
+    echo "FAIL: *.egg-info/ directory added — project is not a Python package (pyproject.toml: package = false)"
+    exit 1
+fi
+
 echo "OK: pre-push checks passed"
