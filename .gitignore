@@ -76,3 +76,9 @@ build/
 # Claude Code - these SHOULD be committed:
 # .claude/settings.json (project hooks)
 # .claude/skills/ (project-specific skills)
+
+# Untracked scratch patterns that shouldn't re-enter root
+Screenshot*.png
+local-*.ipynb
+*_debug.json
+*_debug.csv
