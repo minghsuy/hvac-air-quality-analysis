@@ -10,11 +10,9 @@ None of this is original science. It's what happens when you take a single home 
 
 ### 1. Your bedroom CO2 is probably above 1,000 ppm overnight
 
-Two people in a closed bedroom with the door shut can push CO2 from an outdoor baseline of ~420 ppm to 2,000–3,000 ppm by morning. The [Harvard COgFx study (Allen et al. 2016)](https://pmc.ncbi.nlm.nih.gov/articles/PMC4892924/) reported ~50% drops in crisis-response and information-usage scores between 550 and 1,400 ppm. That specific finding has been partially contested since — [Rodeheffer et al. 2018](https://pubmed.ncbi.nlm.nih.gov/29789085/) found no significant differences on nine decision-making measures in submariners exposed to 600, 2,500, or 15,000 ppm CO2, and subsequent meta-analyses suggest pure-CO2 effects are smaller than the original paper implied. What is NOT contested: elevated overnight CO2 is a reliable proxy for under-ventilation, which also means accumulating VOCs, bioeffluents, and particulates. Most US residential code has no indoor CO2 target. France, Germany, and Norway cap at ~1,000 ppm in their residential ventilation codes.
+Two people in a closed bedroom with the door shut can push CO2 from a ~420 ppm outdoor baseline to 2,000–3,000 ppm by morning in a tight room. That's the signal the room isn't exchanging outdoor air overnight — so occupant-generated pollutants (exhaled CO2, bioeffluents, humidity) are accumulating alongside. You don't have to trust my data: buy an ~$80 CO2 monitor (Aranet4, Airthings, anything that reads NDIR), put it on the nightstand of a bedroom where the door stays shut, wake up and look at the number.
 
-You don't have to trust my data. Buy an ~$80 CO2 monitor (Aranet4, Airthings, anything that reads NDIR), put it on the nightstand, wake up and look at the number.
-
-The measurement insight on top of that: in my data, indoor CO2 and indoor VOCs correlate at ρ = 0.65. Both are ventilation-limited signals — when the ERV flow is insufficient, both rise together. Which means **an inexpensive CO2 monitor doubles as an under-ventilation proxy for VOCs.** You don't need a VOC sensor to know the air is stale. CO2 is the canary.
+The measurement insight on top of that: in my data, indoor CO2 and indoor VOCs correlate at ρ = 0.65. Both rise together when ERV flow is insufficient, because in this house the VOCs are predominantly occupant/activity-sourced rather than material-off-gassed. That correlation isn't universal — homes with heavy new-material off-gassing produce VOCs independent of ventilation, breaking the pairing — but in a household like mine, an inexpensive CO2 monitor has served as a reasonable under-ventilation proxy for VOCs too. Not a canary for every indoor pollutant. A canary for the ones your family makes.
 
 ### 2. Two filters with the same "MERV 13" rating differed by 24 percentage points
 
@@ -47,10 +45,10 @@ For this household at current filter prices ($100 per OEM ERV MERV 13), the meas
 
 This part is not about my house. It's about why my house is the way it is.
 
-- **France, 1982**: mandated continuous mechanical exhaust ventilation in all residences. Required emissions labeling on building materials (A+ through C) since 2012.
-- **Japan, 2003**: after the nationwide "Sick House Syndrome" crisis, mandated 24-hour continuous mechanical ventilation in every new residence. Banned chlorpyrifos in building materials outright.
-- **Norway, TEK17**: balanced mechanical ventilation with heat recovery in every dwelling. Airtightness ≤1.5 ACH50. Supply air filtration at F7 (~MERV 13) from the factory. Indoor CO2 target around 920 ppm.
-- **Germany, DIN 1946-6 / GEG**: every new or renovated dwelling requires a ventilation concept. Airtightness testing required. Indoor CO2 target of 1,000 ppm codified.
+- **France, 1982** (Arrêté du 24 mars 1982): mandated general, permanent, swept-airflow ventilation with minimum extraction flow rates in all residences. The regulation itself is technology-neutral — but the flow-rate requirements drove near-universal adoption of mechanical ventilation (VMC) in practice. Required A+ to C emissions labeling on building materials since 2012.
+- **Japan, 2003**: after the nationwide "Sick House Syndrome" crisis, the Building Standards Law was amended to require mechanical ventilation delivering at least 0.5 ACH in residential rooms, typically implemented as 24-hour ventilation.
+- **Norway, TEK17 §13-2**: performance-based residential ventilation — at least 1.2 m³/h per m² of floor area while occupied, 26 m³/h per planned bed in bedrooms, extraction from kitchen/bath/toilet. Balanced mechanical ventilation with heat recovery is the practical way to meet both this and the chapter 14 energy rules; F7 (~MERV 13) supply-air filtration is recommended in separate Arbeidstilsynet workplace-air guidance rather than TEK17 itself.
+- **Germany, GEG §6 + DIN 1946-6**: every new or renovated dwelling requires a Lüftungskonzept (ventilation concept). The legal duty is in the Gebäudeenergiegesetz; DIN 1946-6 is the recognised engineering standard for satisfying it.
 
 **The US has no federal residential indoor air quality standard.** The minimum required HVAC filtration in ASHRAE 62.2 is MERV 6 — catches dust bunnies and essentially nothing of combustion-particle or wildfire-smoke consequence. No federal indoor CO2 target. No VOC emissions labeling on building materials. No airtightness requirement comparable to European codes. California leads among US states (Title 24 requires mechanical ventilation since 2013) but its airtightness threshold is far more lenient than Norway's.
 
