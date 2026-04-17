@@ -1,56 +1,93 @@
-name: Claude Code Review
+name: Claude Code Review (on-demand)
+
+# On-demand PR review. Trigger with an "@claude-review" mention in any PR comment.
+# This complements claude.yml (generic @claude handler) — use @claude-review
+# when you want the structured review rubric below.
 
 on:
-  pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
+  issue_comment:
+    types: [created]
 
 jobs:
   claude-review:
+    # Only run when someone mentions @claude-review on a PR (not a plain issue).
+    if: |
+      github.event.issue.pull_request != null &&
+      contains(github.event.comment.body, '@claude-review')
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
       issues: write
       id-token: write
+      actions: read  # lets Claude check CI status when deciding severity
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0  # full history so git log / git show work for context
 
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
+          additional_permissions: |
+            actions: read
+          claude_args: >-
+            --model claude-opus-4-7
+            --allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr checks:*),Bash(gh run view:*),Bash(gh api:*),Bash(git log:*),Bash(git show:*),Bash(git diff:*),Bash(cat:*),Bash(ls:*)"
           prompt: |
-            Review PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+            Review PR #${{ github.event.issue.number }} in ${{ github.repository }}.
+            The author requested this review by commenting @claude-review.
 
-            First, read the CLAUDE.md file in the repo root for project conventions.
-            Then review the PR diff using `gh pr diff ${{ github.event.pull_request.number }}`.
+            # Your goal
+            High signal-to-noise. The author is a senior data scientist with 12+
+            years of production experience. They do NOT need reminders about
+            generic best practices. Focus exclusively on issues they probably
+            haven't caught. If the PR is clean, say so in three sentences.
 
-            **Project: hvac-air-quality-analysis** — HVAC and air quality sensor data analysis.
+            # Must-read context BEFORE reviewing (in this order)
+            1. `cat CLAUDE.md` — project conventions and NEVER-commit rules
+            2. `cat docs/LESSONS_LEARNED.md` — resolved past mistakes. DO NOT re-raise an item listed here unless this PR clearly re-introduces the same problem.
+            3. `gh pr view ${{ github.event.issue.number }} --json title,body,author` — author's stated intent and scope
+            4. `gh pr diff ${{ github.event.issue.number }}` — the actual changes
+            5. `gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments` — prior comments on this PR. DO NOT re-raise points the author has already addressed or explicitly rejected with reasoning.
+            6. `gh pr checks ${{ github.event.issue.number }}` — if tests already pass, weigh that in severity decisions.
 
-            ## Critical Checks
-            1. **Sensor data validation** — Input data must be bounds-checked. Reject or flag physically impossible readings (negative humidity, CO2 below 400 ppm ambient, etc.).
-            2. **Unit conversions** — Temperature (F/C/K), pressure, concentration units must be explicit and correct. No implicit unit assumptions.
-            3. **Time series handling** — Timezone-aware timestamps, correct resampling/interpolation, no silent gaps in data.
-            4. **Data integrity** — No silent NaN propagation. Missing data handling must be explicit (drop, fill, interpolate).
+            # What you're looking for (ordered by importance)
+            1. **CLAUDE.md violations** — especially NEVER-commit items (IPs, MAC addrs, device serials, personal emails, credentials, hardcoded spreadsheet IDs)
+            2. **Data-interpretation errors** — computing on sensor data without respecting its physical meaning (integer rounding, unit conventions, sign, silent NaN propagation)
+            3. **Breaking API / schema changes** not described in the PR body
+            4. **Security issues** — secret exposure, injection vectors, unsafe deserialization
+            5. **Silent correctness bugs** — timezone mixing, off-by-one on windows, incorrect aggregation, wrong boundary handling
 
-            ## Standard Review Areas
-            - Correct use of pandas/numpy for time series operations
-            - Plot labels, units, and axis scales
-            - Test coverage for new/changed behavior
-            - No hardcoded file paths or credentials
+            # What you SHOULD NOT flag (even as SHOULD FIX)
+            - **Missing unit tests** — author decides when tests are worth it for utility scripts
+            - **Style alternatives** — if ruff passes, formatting is correct
+            - **"Add feature X" scope-creep** wrapped as a finding — at most a one-line :green_circle:
+            - **Speculative future bugs** you cannot confirm from the diff alone ("if this code is ever used with tz-aware timestamps...") — :green_circle: at most, only if you also name a concrete triggering scenario
+            - **Bounds checking / retry logic / broader exception handling** — these are domain decisions you don't have context for
+            - **Items already listed in docs/LESSONS_LEARNED.md as resolved**
+            - **Items the author already addressed or rejected** earlier in this same PR's comment thread
 
-            ## Output Format
-            Categorize each finding:
-            - :red_circle: **BLOCKING** — Must fix before merge (bugs, security, data correctness)
-            - :yellow_circle: **SHOULD FIX** — Strong recommendation (code quality, edge cases)
-            - :green_circle: **SUGGESTION** — Nice to have (style, minor improvements)
+            # Severity scheme — BE STRICT
+            - :red_circle: **BLOCKING** — RESERVED for: CLAUDE.md policy violations, data-corruption risks, security vulnerabilities, broken builds. If you cannot name a concrete harm that occurs when this ships today, it is NOT blocking.
+            - :yellow_circle: **SHOULD FIX** — Real correctness or maintainability issues that aren't deal-breakers.
+            - :green_circle: **SUGGESTION** — Nice-to-haves. Maximum 3. If you can't pick 3 most-valuable ones, pick fewer or omit the section.
 
-            If the PR looks good, say so briefly.
+            # Three reviewer personas, applied in priority order
+            1. **Project-standards reviewer** — audit against CLAUDE.md and LESSONS_LEARNED.md
+            2. **Correctness reviewer** — logic errors, data-interpretation flaws, edge cases (NOT style)
+            3. **Adversarial reviewer** — what specific scenario breaks this code today? Name it concretely, or don't mention it.
 
-            Use `gh pr comment ${{ github.event.pull_request.number }}` with your Bash tool to leave your review as a comment on the PR.
+            # Output format
+            Post ONE comment via `gh pr comment ${{ github.event.issue.number }} --body "..."`. Structure:
+            - **Verdict (1 line):** approve / request changes / needs discussion
+            - **:red_circle: BLOCKING** — only if any, else omit the section entirely
+            - **:yellow_circle: SHOULD FIX** — only if any, else omit
+            - **:green_circle: SUGGESTION** — max 3, else omit
+            - **What looks good (2-3 bullets):** reinforcement signal
+
+            Length is not a sign of review quality. A three-sentence "this looks clean, nothing actionable" is the correct output for a clean PR.
