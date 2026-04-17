@@ -342,3 +342,154 @@ class TestEfficiencyEdgeCases:
         """Test when both indoor and outdoor are zero"""
         # Edge case: 0/0 should return 100% (perfect efficiency when no pollution)
         assert collector.calculate_efficiency(0, 0) == 100.0
+
+
+# ---------------------------------------------------------------------------
+# Shared Sheets loader (scripts/_sheets_loader.py) — extracted from three
+# near-identical copies in refresh_cache.py, dashboard.py, and bench_heatmap.py
+# ---------------------------------------------------------------------------
+
+sys.path.insert(0, "scripts")  # make _sheets_loader importable as a sibling
+
+import _sheets_loader  # noqa: E402
+
+
+HEADERS = [
+    "Timestamp",
+    "Sensor_ID",
+    "Room",
+    "Sensor_Type",
+    "Indoor_PM25",
+    "Outdoor_PM25",
+    "Filter_Efficiency",
+    "Indoor_CO2",
+    "Indoor_VOC",
+    "Indoor_NOX",
+    "Indoor_Temp",
+    "Indoor_Humidity",
+    "Indoor_Radon",
+    "Outdoor_CO2",
+    "Outdoor_Temp",
+    "Outdoor_Humidity",
+    "Outdoor_VOC",
+    "Outdoor_NOX",
+]
+
+
+class TestSheetsLoader:
+    """Test the shared Google Sheets → DataFrame loader."""
+
+    def test_modern_18col_row_preserves_all_values(self):
+        """Full 18-column post-stabilization row: nothing gets nulled."""
+        values = [
+            HEADERS,
+            [
+                "2026-02-10 12:00:00",
+                "airthings_abc",
+                "master_bedroom",
+                "airthings",
+                "1.5",  # Indoor_PM25
+                "4.0",  # Outdoor_PM25
+                "62.5",  # Filter_Efficiency
+                "600",  # Indoor_CO2
+                "100",  # Indoor_VOC
+                "5",  # Indoor_NOX
+                "22.5",  # Indoor_Temp ← must survive
+                "45.0",  # Indoor_Humidity ← must survive
+                "50",  # Indoor_Radon
+                "420",  # Outdoor_CO2
+                "15.0",  # Outdoor_Temp
+                "60.0",  # Outdoor_Humidity
+                "80",  # Outdoor_VOC
+                "3",  # Outdoor_NOX
+            ],
+        ]
+        df = _sheets_loader._values_to_df(values)
+        assert len(df) == 1
+        assert df.iloc[0]["Indoor_Temp"] == 22.5
+        assert df.iloc[0]["Indoor_Humidity"] == 45.0
+        assert df.iloc[0]["Outdoor_Temp"] == 15.0
+
+    def test_legacy_17col_row_triggers_shift_repair(self):
+        """Pre-2025-09-01 row with 17 columns: shift-repair nulls Indoor_Temp etc."""
+        # Legacy short row — missing last column; shift-repair nulls the SHIFTED_COLS
+        values = [
+            HEADERS,
+            [
+                "2025-08-15 10:00:00",
+                "airthings_abc",
+                "master_bedroom",
+                "airthings",
+                "1.5",
+                "4.0",
+                "62.5",
+                "600",
+                "100",
+                "5",
+                "22.5",  # Indoor_Temp  — nulled by shift-repair
+                "45.0",  # Indoor_Humidity — nulled
+                "50",  # Indoor_Radon — nulled
+                "420",  # Outdoor_CO2 — nulled
+                "15.0",  # Outdoor_Temp — nulled
+                "60.0",  # Outdoor_Humidity — nulled
+                "80",  # Outdoor_VOC — nulled
+                # 17 values only — missing Outdoor_NOX
+            ],
+        ]
+        df = _sheets_loader._values_to_df(values)
+        assert len(df) == 1
+        # All SHIFTED_COLS for this legacy short row must be NaN
+        import math
+
+        assert math.isnan(df.iloc[0]["Indoor_Temp"])
+        assert math.isnan(df.iloc[0]["Indoor_Humidity"])
+        assert math.isnan(df.iloc[0]["Outdoor_Temp"])
+        # But non-shifted columns stay intact
+        assert df.iloc[0]["Indoor_PM25"] == 1.5
+        assert df.iloc[0]["Filter_Efficiency"] == 62.5
+
+    def test_modern_12col_tempstick_row_preserves_temp_humidity(self):
+        """Post-stabilization Temp Stick row: Sheets trims 6 trailing empties,
+        row lands as 12 cols, but shift-repair MUST NOT fire."""
+        values = [
+            HEADERS,
+            [
+                "2026-02-10 12:00:00",
+                "tempstick_abcd",
+                "attic",
+                "tempstick",
+                "",  # Indoor_PM25 (empty — tempstick doesn't report PM)
+                "",  # Outdoor_PM25
+                "",  # Filter_Efficiency
+                "",  # Indoor_CO2
+                "",  # Indoor_VOC
+                "",  # Indoor_NOX
+                "20.06",  # Indoor_Temp ← MUST SURVIVE
+                "35.5",  # Indoor_Humidity ← MUST SURVIVE
+                # 12 values total — Sheets API trimmed the 6 trailing empties
+            ],
+        ]
+        df = _sheets_loader._values_to_df(values)
+        assert len(df) == 1
+        assert df.iloc[0]["Indoor_Temp"] == 20.06
+        assert df.iloc[0]["Indoor_Humidity"] == 35.5
+
+    def test_header_only_sheet_returns_empty_df(self):
+        """Sheet with only the header row returns an empty DataFrame."""
+        values = [HEADERS]
+        df = _sheets_loader._values_to_df(values)
+        assert len(df) == 0
+        assert list(df.columns) == HEADERS
+
+    def test_fetch_values_raises_on_empty_sheet(self):
+        """Empty Sheet API response raises RuntimeError with a clear message."""
+        import pytest
+
+        mock_service = MagicMock()
+        mock_service.spreadsheets.return_value.values.return_value.get.return_value.execute.return_value = {}
+        with (
+            patch("_sheets_loader.build", return_value=mock_service),
+            patch("_sheets_loader.service_account.Credentials.from_service_account_file"),
+        ):
+            with pytest.raises(RuntimeError, match="no rows"):
+                _sheets_loader._fetch_values("fake_id", "fake_tab", "fake_creds.json")

@@ -7,11 +7,10 @@ Shows where the real bottleneck is and what GPU acceleration actually helps.
 import os
 import time
 
-import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
+
+from _sheets_loader import load_sheet_as_df
 
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
 
@@ -24,62 +23,7 @@ def fetch_from_sheets():
     spreadsheet_id = os.environ["GOOGLE_SPREADSHEET_ID"]
     sheet_tab = os.environ.get("GOOGLE_SHEET_TAB", "")
     creds_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "google-credentials.json")
-    credentials = service_account.Credentials.from_service_account_file(
-        creds_path, scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"]
-    )
-    service = build("sheets", "v4", credentials=credentials)
-    sheet = service.spreadsheets()
-    range_name = f"{sheet_tab}!A:R" if sheet_tab else "A:R"
-    result = sheet.values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
-    values = result.get("values", [])
-
-    headers = values[0]
-    n_cols = len(headers)
-    padded = []
-    orig_cols = []
-    for row in values[1:]:
-        orig_cols.append(len(row))
-        r = row + [""] * (n_cols - len(row)) if len(row) < n_cols else row[:n_cols]
-        padded.append(r)
-
-    df = pd.DataFrame(padded, columns=headers)
-    df["_orig_cols"] = orig_cols
-    df["Timestamp"] = pd.to_datetime(df["Timestamp"], errors="coerce")
-    for col in [
-        "Indoor_PM25",
-        "Outdoor_PM25",
-        "Filter_Efficiency",
-        "Indoor_CO2",
-        "Outdoor_CO2",
-        "Indoor_VOC",
-        "Indoor_NOX",
-        "Indoor_Temp",
-        "Indoor_Humidity",
-        "Indoor_Radon",
-        "Outdoor_Temp",
-        "Outdoor_Humidity",
-        "Outdoor_VOC",
-        "Outdoor_NOX",
-    ]:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    shifted = df["_orig_cols"] < 18
-    for col in [
-        "Indoor_Temp",
-        "Indoor_Humidity",
-        "Indoor_Radon",
-        "Outdoor_CO2",
-        "Outdoor_Temp",
-        "Outdoor_Humidity",
-        "Outdoor_VOC",
-        "Outdoor_NOX",
-    ]:
-        if col in df.columns:
-            df.loc[shifted, col] = np.nan
-
-    df = df.dropna(subset=["Timestamp"]).sort_values("Timestamp").reset_index(drop=True)
-    return df
+    return load_sheet_as_df(spreadsheet_id, sheet_tab, creds_path)
 
 
 def build_heatmap_pandas(df):
