@@ -66,11 +66,13 @@ def season_of(ts: pd.Timestamp) -> str:
 
 
 def master_bedroom(df: pd.DataFrame) -> pd.DataFrame:
-    return df[df["Sensor_ID"] == "airthings_129430"].copy()
+    """Primary indoor sensor (Airthings) — used for health-relevant claims."""
+    return df[df["Room"] == "master_bedroom"].copy()
 
 
 def second_bedroom(df: pd.DataFrame) -> pd.DataFrame:
-    return df[df["Sensor_ID"] == "airgradient_1cf228"].copy()
+    """AirGradient near kitchen — used for PM2.5 precision where Airthings rounding hurts."""
+    return df[df["Room"] == "second_bedroom"].copy()
 
 
 # ── Compute: Feb 7-8 case study ──────────────────────────────────────────────
@@ -461,7 +463,7 @@ def build_html(
     return (
         f"<!doctype html><html><head><meta charset='utf-8'>"
         f"<title>HVAC air quality findings — verification report</title>"
-        f"<style>{css}</style></head><body>{body}</body></html>"
+        f"<style>{css}</style></head><body>{body}</body></html>\n"
     )
 
 

@@ -4,7 +4,11 @@ and verify both have non-trivial render area (i.e. plotly actually rendered).
 
 Use after regenerating the HTML to catch load-order bugs before commit.
 
-Usage:  uv run python scripts/analysis/screenshot_report.py
+First-time setup (once per machine after `uv sync --dev`):
+    uv run playwright install chromium
+
+Usage:
+    uv run python scripts/analysis/screenshot_report.py
 """
 
 import sys
