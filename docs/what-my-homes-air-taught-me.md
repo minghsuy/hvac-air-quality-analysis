@@ -37,9 +37,9 @@ Manufacturers optimize replacement schedules for the dirtiest household they'll 
 
 My monitoring system caught exactly one genuine filter failure in nine months of data. On Feb 7–8, 2026, hourly master-bedroom filter efficiency dropped from a ~95% baseline to **49% by 9am Feb 8**. The system escalated from WARNING to CRITICAL. The family could smell it — a musty quality to the air — before replacement. After the new filter: efficiency back to 100% within an hour.
 
-Condition-based replacement across the measured period worked out to $130–$260/year in filter costs, vs. $530–$910/year on a fixed manufacturer schedule. For a family running MERV 13 across an ERV + main HVAC + zone filters, that's **$400–800 a year you're not spending on replacements you don't need.**
+For this household at current filter prices ($100 per OEM ERV MERV 13), the measured ERV life of 116–151 days vs. the manufacturer's 90 days translates to **~$130/year saved on that one filter.** The main 4" return filter is harder — there's no indoor-only sensor downstream of it, so I can't measure its efficiency in isolation and still replace it on a conservative 6-month interval. The zone filters are $10 each on a fixed 90-day schedule — not worth measuring.
 
-The tradeoff: condition-based replacement requires continuous outdoor + indoor PM2.5 measurement. That's ~$200 of hardware. Payback in 2–5 months.
+**Savings scale with filter price, not filter count.** A household running premium $200–300 MERV 13 filters saves 2–3× more per filter than this one. The ~$200 outdoor-sensor hardware pays back in about 1.5 years at my prices; faster for more expensive filter setups. See [findings.md § Cost Impact](findings.md#cost-impact) for the full per-filter table.
 
 → [Hour-by-hour chart of the Feb 7-8 alert escalation](reports/findings.html#feb-case)
 
