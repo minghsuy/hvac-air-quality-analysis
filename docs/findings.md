@@ -24,7 +24,7 @@ Analysis of 98,000+ readings from the primary bedroom sensor reveals five notabl
 
 ## Filter Longevity and the Natural Experiment
 
-Reproduced from the parquet cache (142k+ readings, 2025-07 through 2026-04) on 2026-04-16. See [`scripts/analysis/verify_findings.py`](../scripts/analysis/verify_findings.py) and the rendered [verification report](../reports/findings.html).
+Reproduced from the parquet cache (142k+ readings, 2025-07 through 2026-04) on 2026-04-16. See [`scripts/analysis/verify_findings.py`](../scripts/analysis/verify_findings.py) and the rendered [verification report](reports/findings.html).
 
 Running the verification against the data surfaced a previously-undocumented **natural experiment** in Sept-Oct 2025: the OEM-specified ERV filter was temporarily replaced with a generic MERV-13-rated HVAC-style panel filter of a different form factor. Same home, same outdoor air, same sensors, same HVAC — only the filter changed. The period is separated below for clarity.
 

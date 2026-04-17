@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Open reports/findings.html in headless Chromium, screenshot each chart,
+"""Open docs/reports/findings.html in headless Chromium, screenshot each chart,
 and verify both have non-trivial render area (i.e. plotly actually rendered).
 
 Use after regenerating the HTML to catch load-order bugs before commit.
@@ -13,8 +13,8 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-HTML_PATH = REPO_ROOT / "reports" / "findings.html"
-SHOT_DIR = REPO_ROOT / "reports" / "screenshots"
+HTML_PATH = REPO_ROOT / "docs" / "reports" / "findings.html"
+SHOT_DIR = REPO_ROOT / "reports" / "screenshots"  # ephemeral, stays at repo root (gitignored)
 
 # Minimum pixel area a chart div must fill to be considered "rendered". An
 # unrendered plotly div collapses to near-zero height.

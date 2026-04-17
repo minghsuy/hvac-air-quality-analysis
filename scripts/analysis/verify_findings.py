@@ -3,8 +3,9 @@
 against the raw parquet cache, so an external reader can audit them.
 
 Outputs:
-  - stdout:              text summary (fast to scan)
-  - reports/findings.html: self-contained HTML with plotly charts (shareable)
+  - stdout:                    text summary (fast to scan)
+  - docs/reports/findings.html: self-contained HTML with plotly charts,
+                                served by GitHub Pages at /reports/findings.html
 
 Usage:  uv run python scripts/analysis/verify_findings.py
 """
@@ -22,7 +23,7 @@ from scipy.stats import spearmanr
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PARQUET_CACHE = REPO_ROOT / ".cache" / "air_quality.parquet"
-HTML_OUT = REPO_ROOT / "reports" / "findings.html"
+HTML_OUT = REPO_ROOT / "docs" / "reports" / "findings.html"
 
 # Seasonal outdoor PM2.5 minimums for reliable efficiency measurement.
 # Source: docs/methodology.md + HVACMonitor_v3.gs
@@ -360,8 +361,8 @@ def build_html(
         <h2>Scope and what this audits</h2>
         <p>
           This report reproduces the Spearman correlations in
-          <a href="../docs/findings.md">docs/findings.md</a>, the filter-replacement history from
-          <a href="../wiki-repo/Analysis-Results.md">wiki-repo/Analysis-Results.md</a>, and the
+          <a href="../findings.html">findings</a>, the filter-replacement history from
+          the project wiki's Analysis Results page, and the
           Feb 7-8 2026 alert-escalation case study. Running it against the parquet also surfaced a
           previously-undocumented natural experiment (Sept-Oct 2025), which is the most
           researcher-relevant finding in the dataset.
