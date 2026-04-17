@@ -194,3 +194,11 @@ Always prefer evidence over assumptions.
 **Discovery**: Individually these are small. Together they're a pattern: I was running checks ad hoc rather than as a disciplined sequence. Every one of them was caught after push by CI or review, when a 10-second local check would have caught it before.
 
 **Solution**: `scripts/hooks/pre-push` runs ruff check + ruff format --check + a broader device-ID grep (sensor-ID patterns for airthings/airgradient/tempstick/ecobee/nest, not only `d8:3b:da`) + conditional screenshot verify. Install via `bash scripts/install-hooks.sh` — sets up symlinks from `.git/hooks/` to the tracked `scripts/hooks/` versions.
+
+## Apr 17, 2026: Verify Every Citation by PMID/DOI, Not from Memory
+
+**Problem**: Published the landing page (`docs/what-my-homes-air-taught-me.md`) with a citation to "Scully et al. 2019" at PMID `30975324` as contrary evidence to the Harvard COgFx CO2→cognition claim. The PMID resolved to a Chinese wastewater nitrogen-treatment paper (Chen, Li, Yuan, Huang). The author name "Scully" was also fabricated. The user clicked the link, noticed the authors didn't match the claim, and flagged it. The actual paper I was trying to cite is Rodeheffer et al. 2018 (PMID 29789085), "Acute exposure to low-to-moderate carbon dioxide levels and submariner decision making," *Aerospace Medicine and Human Performance*.
+
+**Discovery**: LLM-sourced citations can be plausible-but-wrong in multiple dimensions simultaneously — wrong PMID, wrong author name, correct journal-ish, approximately-right finding. "Sounds right" is not a verification. Neither pre-push hooks nor the review bot caught this: they can't fact-check domain knowledge. A grep for `pubmed.ncbi.nlm.nih.gov` in the diff and a quick click-through is the only defense.
+
+**Solution**: Before shipping ANY PubMed/DOI/ArXiv citation, fetch the URL and verify at minimum: title matches claim, author name matches cited attribution, year matches. Cannot rely on "I remember this paper" — memory confabulates specific identifiers. Worth adding a citation-verify step to future outreach-content PRs.
