@@ -1,29 +1,30 @@
 # HVAC Air Quality Monitoring System
 
-**Manufacturer says replace filters every 45 days. My data says 120+ days. Here's why.**
+**Continuous residential HVAC monitoring. 142,000+ sensor readings across 9 months. Three installer / filter / system incidents caught that a human trusting the install wouldn't have.**
 
 [![Release](https://img.shields.io/github/v/release/minghsuy/hvac-air-quality-analysis)](https://github.com/minghsuy/hvac-air-quality-analysis/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## The Problem
+👉 **New here?** Start at the landing page: [What my home's air taught me](https://minghsuy.github.io/hvac-air-quality-analysis/what-my-homes-air-taught-me.html). The full verification report with interactive charts: [findings.html](https://minghsuy.github.io/hvac-air-quality-analysis/reports/findings.html).
 
-My family has asthma. After noticing symptoms correlating with degraded HVAC filter performance, I needed answers:
+## Why this exists
 
-- **When should I actually replace filters?** (Not when the manufacturer says, but when efficiency drops)
-- **How do I measure "efficiency" objectively?** (Indoor PM2.5 alone is meaningless without outdoor context)
-- **Can I predict problems before they affect health?**
+My gas furnace kept tripping its overheat-safety cutoff. My CO2 sensor was reading unusually high at the same time. An HVAC company traced both to a previous installer having clamped the air duct to my room. I scrapped the furnace, put in a heat pump + ERV, and started measuring the air continuously. The monitoring system grew out of wanting a signal I could trust the next time a human told me "it's fine."
 
-## The Solution
+Nine months and 142,000+ readings later, the system has caught two more incidents of the same pattern:
 
-6+ months of continuous monitoring with **98,000+ sensor readings** revealed:
+- **Sept 6 – Oct 15, 2025** — installer substituted a generic MERV-13-labeled filter for my OEM ERV filter during a service visit. Measured efficiency dropped from ~95% to 69% median. Detected within the first day of data; confirmed across the full 40-day period.
+- **Feb 7–8, 2026** — in-service filter degradation. Hourly efficiency dropped from ~95% baseline to 49% by 9 AM. HVACMonitor v3 (Google Apps Script) escalated WARNING → CRITICAL over 8 hours. Replacement restored efficiency to 100% within the hour. Family reported smelling the air before the numbers made it human-obvious.
 
-| What Manufacturer Says | What Data Shows |
-|------------------------|-----------------|
-| Replace every 45 days | MERV 13 maintains >85% efficiency for **120+ days** |
-| Indoor air quality sensors are enough | You need **outdoor baseline** to calculate true efficiency |
-| Replace on schedule | Replace when **efficiency drops below threshold** |
+The measurement system is still running. Google Apps Script on a trigger, seasonal threshold calibration, email alerts on drift. Full methodology in the [docs](docs/) directory and the [verification report](https://minghsuy.github.io/hvac-air-quality-analysis/reports/findings.html).
 
-**Result**: Better air quality, fewer asthma triggers, $130-910/year saved on unnecessary filter replacements.
+## Findings (verified against 142k-row parquet cache)
+
+1. **OEM MERV 13 filter cycles** run 116–151 days in this installation vs. a 90-day manufacturer schedule. ~$130/year back on the ERV alone at current prices; savings scale with filter cost.
+2. **Two filters with the same "MERV 13" rating differ by ~24 percentage points** in real-world PM2.5 efficiency in the same installation (Sept–Oct 2025 natural experiment). MERV is a minimum spec, not a performance guarantee. This is consistent with peer-reviewed filtration research (Fazli et al., *Indoor Air* 2019, PMID 31077624).
+3. **Efficiency-based alerts catch real failures** that calendar-based replacement schedules miss. Load-based filter-life prediction does not predict efficiency degradation in this system.
+4. **CO2–VOC correlate at ρ=0.65** in this house, making an inexpensive CO2 monitor a reasonable under-ventilation proxy (for homes where VOCs are occupant-sourced rather than material-off-gassed).
+5. **Outdoor PM2.5–Indoor Radon correlate at ρ=0.53** as an atmospheric-stagnation co-signal — rare for homes to measure both continuously.
 
 ## How It Works
 
@@ -80,16 +81,11 @@ See the [methodology docs](https://minghsuy.github.io/hvac-air-quality-analysis/
 
 **Interactive charts**: [CO₂ Levels](https://minghsuy.github.io/hvac-air-quality-analysis/charts/co2_bedroom_levels.html) | [Filter Efficiency](https://minghsuy.github.io/hvac-air-quality-analysis/charts/filter_efficiency.html) | [Indoor vs Outdoor PM2.5](https://minghsuy.github.io/hvac-air-quality-analysis/charts/indoor_vs_outdoor_pm25.html)
 
-## Key Findings
+## Duplicate-content note
 
-After analyzing 98,000+ readings over 6 months:
+This section previously held an older version of the findings summary. It's been consolidated into the `## Findings` section at the top of this README (aligned with the landing page and verification report) to avoid drift.
 
-1. **MERV 13 filters maintain >85% efficiency for 120+ days** (not 45 days as marketed)
-2. **Load-based predictions don't work** - a filter at 197% of "max life" still performed at 87.3% efficiency
-3. **Seasonal calibration matters** - winter pollution requires different thresholds than summer
-4. **Indoor PM2.5 stays below 12 μg/m³** (WHO guideline) with proper monitoring
-
-See the [Project Wiki](https://github.com/minghsuy/hvac-air-quality-analysis/wiki) for detailed analysis and visualizations.
+See [docs/findings.md](docs/findings.md) for the current numeric summary and [docs/reports/findings.html](https://minghsuy.github.io/hvac-air-quality-analysis/reports/findings.html) for the interactive verification report. [Project Wiki](https://github.com/minghsuy/hvac-air-quality-analysis/wiki) has the deeper research and policy essay.
 
 ## Quick Start
 

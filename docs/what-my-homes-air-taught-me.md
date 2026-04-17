@@ -62,6 +62,20 @@ For the full policy and research comparison: [The Freeway Air Problem](https://g
 
 ---
 
+## The system is still running
+
+This isn't a study I finished. The monitoring is live. [HVACMonitor v3](https://github.com/minghsuy/hvac-air-quality-analysis/blob/main/HVACMonitor_v3.gs) — a Google Apps Script — runs on an hourly trigger against the Sheet that holds the raw sensor rows, re-calibrates efficiency thresholds seasonally from the actual distribution of the house's data, and emails me when efficiency, CO2, PM2.5, or radon drifts outside confidence bands. Alerts are escalation-based: WARNING on first deviation, CRITICAL on sustained deviation, with a cooldown so a single noisy reading doesn't wake the house at 3 AM.
+
+Three real incidents the system has caught:
+
+- **Before the measurement system existed (origin):** clamped duct + overheat cutoff + elevated CO2 — the catalyst for scrapping the furnace and building continuous monitoring.
+- **Sept 6 – Oct 15, 2025:** installer substituted a generic MERV-13-labeled filter during a service visit. Efficiency drop detected on the first day of data; confirmed across 40 days of operation.
+- **Feb 7–8, 2026:** in-service filter degradation. WARNING → CRITICAL escalation over 8 hours. The family smelled the air before the human interpretation caught up to the numbers.
+
+The next failure — whatever form it takes — gets caught the same way. The point of building this was never the nine months of receipts behind this page. It's the next nine months, and the nine after that.
+
+---
+
 ## What you can actually do this week
 
 1. **Buy a CO2 monitor** (~$80, Aranet4 or similar). Put it in the bedroom where the people you most care about sleep. Check it at 6am. This is the cheapest, most visceral conversion from "air quality is abstract" to "oh, that's what 1,800 ppm feels like."
