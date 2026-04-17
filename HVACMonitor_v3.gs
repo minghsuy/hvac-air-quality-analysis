@@ -33,12 +33,42 @@
 // CONFIGURATION
 // ============================================================================
 
+// Bump on every repo edit so the Apps Script execution log reveals which repo
+// version is actually running — deploy-drift is grep-able, not a mystery.
+const MONITOR_VERSION = 'v3.2026-04-17';
+
 const CONFIG = {
   SHEET_NAME: 'Cleaned_Data_20250831',
   FILTER_SHEET: 'Filter_Changes',
 
-  // How long without data before alerting
+  // DEPRECATED: superseded by per-sensor EXPECTED_SENSORS[type].maxGapHours below.
+  // Left in place for any callers still referencing it; checkDataCollection() no
+  // longer consults it.
   DATA_GAP_HOURS: 2,
+
+  // Per-sensor expected cadence. A sensor is flagged STOPPED when its most
+  // recent row is older than maxGapHours. Temp Stick reports hourly (battery
+  // conservation); Airthings and AirGradient report every 5 min.
+  EXPECTED_SENSORS: {
+    airthings:   { maxGapHours: 1 },
+    airgradient: { maxGapHours: 1 },
+    tempstick:   { maxGapHours: 3 },
+  },
+
+  // Absolute indoor PM threshold — fires when master-bedroom Indoor_PM25 stays
+  // elevated while outdoor is calm (filtration-failure signature). Calibrated
+  // against 9 months of master-bedroom data: threshold=5 produces ~2.76
+  // alerts/wk; slope gate + progressive escalation separate cooking's
+  // spike-then-decay from filtration-failure's rise-and-sustain.
+  INDOOR_BASELINE: {
+    room:                    'master_bedroom',  // canonical indoor sensor
+    absoluteThreshold:       5,                 // µg/m³
+    warningMinutes:          30,                // sustained above threshold → WARNING
+    criticalMinutes:         90,                // sustained above threshold → CRITICAL
+    outdoorGate:             10,                // skip check when outdoor PM >= this
+    slopeSuppressThreshold: -0.5,               // µg/m³ drop over 30-min windows → suppress WARNING
+    cooldownMinutes:         60,                // per-tier cooldown
+  },
 
   // Outdoor AQI thresholds for ERV control (asthma-friendly)
   OUTDOOR_AQI: {
@@ -125,6 +155,7 @@ const COLS = {
  * Main hourly check - runs all monitoring
  */
 function runAllChecks() {
+  console.log(`Monitor version: ${MONITOR_VERSION}`);
   const alerts = { you: [], wife: [] };
 
   // === FOR WIFE ===
@@ -157,6 +188,12 @@ function runAllChecks() {
     alerts.you.push(...indoorSpike.alerts);
   }
 
+  // 4b. Check absolute indoor PM baseline (filtration-failure scenario #27)
+  const indoorBaseline = checkIndoorBaseline();
+  if (indoorBaseline.alerts.length > 0) {
+    alerts.you.push(...indoorBaseline.alerts);
+  }
+
   // 5. Check zone filter ages (time-based - can't measure efficiency)
   const zoneFilters = checkZoneFilters();
   if (zoneFilters.alerts.length > 0) {
@@ -179,7 +216,7 @@ function runAllChecks() {
   sendAlerts(alerts);
 
   console.log('Check complete:', new Date().toISOString());
-  return { alerts, pressure, aqi, efficiency, indoorSpike, zoneFilters, co2, data };
+  return { alerts, pressure, aqi, efficiency, indoorSpike, indoorBaseline, zoneFilters, co2, data };
 }
 
 // ============================================================================
@@ -538,6 +575,136 @@ function checkIndoorSpike() {
 }
 
 // ============================================================================
+// INDOOR BASELINE CHECK (#27)
+// Absolute-threshold alert for master-bedroom PM when outdoor is calm.
+// Progressive escalation (WARNING → CRITICAL) + slope gate (suppress when PM
+// is already decaying) separate cooking from filtration failure.
+// ============================================================================
+
+function _medianOf(arr) {
+  if (!arr.length) return NaN;
+  const s = arr.slice().sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+function checkIndoorBaseline() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME);
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 20) return { alerts: [] };
+
+  const cfg = CONFIG.INDOOR_BASELINE;
+  const props = PropertiesService.getScriptProperties();
+
+  // Pull last 500 rows — enough for 90 min across all sensors even post-dedup.
+  const numRows = Math.min(500, lastRow - 1);
+  const data = sheet.getRange(lastRow - numRows + 1, 1, numRows, 18).getValues();
+
+  // Filter to the canonical indoor room ONLY. Do NOT copy checkIndoorSpike's
+  // pattern of reading last 6 rows regardless of sensor — that silently pins
+  // indoor to 0 when the latest row is a Temp Stick attic row.
+  const now = new Date();
+  const windowMs = cfg.criticalMinutes * 60 * 1000; // 90 min
+  const windowStart = new Date(now.getTime() - windowMs);
+
+  const roomRows = data
+    .filter(r => String(r[COLS.ROOM]) === cfg.room)
+    .map(r => ({
+      ts: new Date(r[COLS.TIMESTAMP]),
+      indoor: parseFloat(r[COLS.INDOOR_PM25]),
+      outdoor: parseFloat(r[COLS.OUTDOOR_PM25]),
+    }))
+    .filter(r => !isNaN(r.ts.getTime()) && r.ts >= windowStart && !isNaN(r.indoor));
+
+  if (roomRows.length < 4) {
+    return { alerts: [], note: 'insufficient master_bedroom rows in window' };
+  }
+
+  const warningStart = new Date(now.getTime() - cfg.warningMinutes * 60 * 1000);
+  const prevStart = new Date(now.getTime() - 2 * cfg.warningMinutes * 60 * 1000);
+
+  const now30 = roomRows.filter(r => r.ts >= warningStart).map(r => r.indoor);
+  const prev30 = roomRows.filter(r => r.ts >= prevStart && r.ts < warningStart).map(r => r.indoor);
+  const full90 = roomRows.map(r => r.indoor);
+
+  if (now30.length < 4) return { alerts: [], note: 'insufficient samples in 30-min window' };
+
+  const now30Med = _medianOf(now30);
+  const prev30Med = _medianOf(prev30);
+  const full90Med = _medianOf(full90);
+
+  // Most-recent outdoor reading (from the same scan; outdoor rows interleave
+  // with master_bedroom rows at the same tick).
+  const outdoorRows = data
+    .filter(r => String(r[COLS.ROOM]) === 'outdoor')
+    .map(r => ({ ts: new Date(r[COLS.TIMESTAMP]), outdoor: parseFloat(r[COLS.OUTDOOR_PM25]) }))
+    .filter(r => !isNaN(r.ts.getTime()) && !isNaN(r.outdoor))
+    .sort((a, b) => b.ts - a.ts);
+  const latestOutdoor = outdoorRows.length ? outdoorRows[0].outdoor : roomRows[roomRows.length - 1].outdoor;
+
+  // Outdoor gate: above this, checkAQI covers the scenario — don't double-alert.
+  if (!isNaN(latestOutdoor) && latestOutdoor >= cfg.outdoorGate) {
+    return { alerts: [], note: `outdoor ${latestOutdoor.toFixed(1)} >= gate ${cfg.outdoorGate}` };
+  }
+
+  const alerts = [];
+  const warnKey = 'INDOOR_BASELINE_WARN_AT';
+  const critKey = 'INDOOR_BASELINE_CRIT_AT';
+
+  const cooldownMs = cfg.cooldownMinutes * 60 * 1000;
+  const inCooldown = (key) => {
+    const last = props.getProperty(key);
+    return last && (now - new Date(last)) < cooldownMs;
+  };
+
+  const direction = (() => {
+    if (isNaN(latestOutdoor)) return 'unknown outdoor context';
+    const diff = now30Med - latestOutdoor;
+    if (diff > 0.5) return 'indoor > outdoor → filtration failure suspected';
+    if (diff < -0.5) return 'indoor < outdoor → outdoor infiltration exceeding filter capacity';
+    return 'indoor ≈ outdoor';
+  })();
+
+  const body = (level) =>
+    `${level === 'CRITICAL' ? '🚨 Indoor PM elevated and not resolving' : '⚠️ Indoor PM elevated'}\n\n` +
+    `Indoor (${cfg.room}): current=${now30.slice(-1)[0].toFixed(1)} μg/m³, ` +
+    `30-min median=${now30Med.toFixed(1)}, 90-min median=${full90Med.toFixed(1)}\n` +
+    `Outdoor: ${isNaN(latestOutdoor) ? 'n/a' : latestOutdoor.toFixed(1) + ' μg/m³'}\n` +
+    `Context: ${direction}\n\n` +
+    `Suggested action: turn on main HVAC fan to circulate air through the MERV 13 return ` +
+    `filter. If already on, check filter condition.`;
+
+  // CRITICAL takes priority over WARNING. Uses independent cooldown so an
+  // earlier WARNING doesn't suppress the escalation.
+  const criticalSustained =
+    full90.length >= 15 &&        // need real 90-min coverage, not 3 samples
+    full90Med > cfg.absoluteThreshold;
+
+  if (criticalSustained && !inCooldown(critKey)) {
+    alerts.push({ level: 'CRITICAL', message: body('CRITICAL') });
+    props.setProperty(critKey, now.toISOString());
+  } else if (now30Med > cfg.absoluteThreshold && !inCooldown(warnKey)) {
+    // WARNING candidate — apply slope gate. If PM is clearly decaying the
+    // event is already resolving (classic cooking signature) and the alert
+    // would be noise.
+    const slope = prev30.length >= 4 ? (now30Med - prev30Med) : 0;
+    if (slope >= cfg.slopeSuppressThreshold) {
+      alerts.push({ level: 'WARNING', message: body('WARNING') });
+      props.setProperty(warnKey, now.toISOString());
+    }
+  }
+
+  return {
+    alerts,
+    now30Med,
+    prev30Med,
+    full90Med,
+    latestOutdoor,
+    sampleCount: roomRows.length,
+  };
+}
+
+// ============================================================================
 // ZONE FILTER TRACKING (time-based - can't measure efficiency)
 // ============================================================================
 
@@ -666,19 +833,36 @@ function checkDataCollection() {
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) return { status: 'NO_DATA', alert: null };
 
-  // Scan last 50 rows to find most recent timestamp per sensor type
-  const numRows = Math.min(50, lastRow - 1);
+  // Scan a TIME window, not a row-count window. The old 50-row fixed window was
+  // narrower than DATA_GAP_HOURS once sensor cadence varied (Temp Stick writes
+  // hourly, not every tick), so a stopped sensor fell out of view before the
+  // gap threshold triggered. Span = 2× max(maxGapHours) gives comfortable
+  // margin for any configured cadence.
+  const maxGapHours = Math.max.apply(
+    null,
+    Object.values(CONFIG.EXPECTED_SENSORS).map(s => s.maxGapHours)
+  );
+  const scanHours = maxGapHours * 2;
+
+  // We can't query "rows where timestamp >= X" directly in Apps Script; read
+  // enough rows to cover the scan window at the fastest cadence (5 min → 12
+  // rows/hr × sensor count). 500 rows covers ~7 hours of 3-sensor writes;
+  // generous for scanHours ≤ 6.
+  const numRows = Math.min(500, lastRow - 1);
   const data = sheet.getRange(lastRow - numRows + 1, 1, numRows, 4).getValues();
+
   const now = new Date();
+  const cutoff = new Date(now.getTime() - scanHours * 3600 * 1000);
   const props = PropertiesService.getScriptProperties();
 
-  const lastSeen = {};  // { sensorType: { timestamp, room } }
+  // Build lastSeen over the scan window only.
+  const lastSeen = {};
   data.forEach(row => {
     const ts = new Date(row[COLS.TIMESTAMP]);
-    const room = String(row[COLS.ROOM]);
+    if (isNaN(ts.getTime()) || ts < cutoff) return;
     const sensorType = String(row[COLS.SENSOR_TYPE]);
     if (!sensorType || sensorType === 'undefined') return;
-
+    const room = String(row[COLS.ROOM]);
     if (!lastSeen[sensorType] || ts > lastSeen[sensorType].timestamp) {
       lastSeen[sensorType] = { timestamp: ts, room };
     }
@@ -687,31 +871,46 @@ function checkDataCollection() {
   const stoppedSensors = [];
   const resumedSensors = [];
 
-  Object.entries(lastSeen).forEach(([sensorType, info]) => {
-    const hoursSince = (now - info.timestamp) / (1000 * 60 * 60);
+  // Iterate EXPECTED_SENSORS, NOT lastSeen keys. A sensor that stopped writing
+  // long ago won't appear in lastSeen at all — iterating lastSeen keys would
+  // silently skip it (the bug that hid the 3-day Temp Stick outage).
+  Object.entries(CONFIG.EXPECTED_SENSORS).forEach(([sensorType, spec]) => {
+    const maxGapMs = spec.maxGapHours * 3600 * 1000;
+    const seen = lastSeen[sensorType];
     const gapKey = `DATA_GAP_${sensorType}`;
 
-    if (hoursSince > CONFIG.DATA_GAP_HOURS) {
-      // Only alert once per sensor per gap
+    const isStopped = !seen || (now - seen.timestamp) > maxGapMs;
+
+    if (isStopped) {
+      const hoursSince = seen ? (now - seen.timestamp) / (1000 * 60 * 60) : scanHours;
       if (!props.getProperty(gapKey)) {
-        stoppedSensors.push({ sensorType, room: info.room, hoursSince });
+        stoppedSensors.push({
+          sensorType,
+          room: seen ? seen.room : 'unknown',
+          hoursSince,
+          maxGapHours: spec.maxGapHours,
+          neverSeenInWindow: !seen,
+        });
         props.setProperty(gapKey, now.toISOString());
       }
     } else {
-      // Check if this sensor is recovering from a gap
       const wasDown = props.getProperty(gapKey);
       if (wasDown) {
-        resumedSensors.push({ sensorType, room: info.room, downSince: wasDown });
+        resumedSensors.push({ sensorType, room: seen.room, downSince: wasDown });
         props.deleteProperty(gapKey);
       }
     }
   });
 
-  // Build alert
   let alert = null;
   if (stoppedSensors.length > 0) {
     const details = stoppedSensors
-      .map(s => `  • ${s.room} (${s.sensorType}): ${s.hoursSince.toFixed(1)}h ago`)
+      .map(s => {
+        const age = s.neverSeenInWindow
+          ? `not seen in last ${scanHours.toFixed(0)}h`
+          : `${s.hoursSince.toFixed(1)}h ago (expected ≤ ${s.maxGapHours}h)`;
+        return `  • ${s.room} (${s.sensorType}): ${age}`;
+      })
       .join('\n');
     alert = {
       level: 'CRITICAL',
@@ -727,8 +926,9 @@ function checkDataCollection() {
     };
   }
 
+  const expectedCount = Object.keys(CONFIG.EXPECTED_SENSORS).length;
   const status = stoppedSensors.length > 0 ? 'PARTIAL' :
-                 Object.keys(lastSeen).length === 0 ? 'NO_DATA' : 'OK';
+                 Object.keys(lastSeen).length < expectedCount ? 'NO_DATA' : 'OK';
 
   return { status, lastSeen, stoppedSensors, resumedSensors, alert };
 }
@@ -1508,9 +1708,35 @@ function test() {
   const co2 = checkCO2();
   console.log(`  Current: ${co2.current?.toFixed(0) || 'N/A'} ppm`);
 
-  console.log('\n📡 Data Collection:', checkDataCollection().status);
+  console.log('\n📡 Data Collection:');
+  const collection = checkDataCollection();
+  console.log(`  Status: ${collection.status}`);
+  Object.entries(CONFIG.EXPECTED_SENSORS).forEach(([type, spec]) => {
+    const seen = collection.lastSeen && collection.lastSeen[type];
+    const label = seen
+      ? `${((new Date() - seen.timestamp) / 3600000).toFixed(1)}h ago`
+      : `not seen in scan window`;
+    console.log(`  ${type} (maxGap=${spec.maxGapHours}h): ${label}`);
+  });
+  if (collection.stoppedSensors && collection.stoppedSensors.length > 0) {
+    console.log(`  ⚠️ stopped: ${collection.stoppedSensors.map(s => s.sensorType).join(', ')}`);
+  }
+
+  console.log('\n🏠 Indoor Baseline (master_bedroom):');
+  const baseline = checkIndoorBaseline();
+  if (baseline.sampleCount !== undefined) {
+    console.log(`  Samples: ${baseline.sampleCount} over 90-min window`);
+    console.log(`  30-min median: ${baseline.now30Med?.toFixed(1)} μg/m³ (threshold=${CONFIG.INDOOR_BASELINE.absoluteThreshold})`);
+    console.log(`  Prev 30-min median: ${baseline.prev30Med?.toFixed(1)} μg/m³`);
+    console.log(`  90-min median: ${baseline.full90Med?.toFixed(1)} μg/m³`);
+    console.log(`  Latest outdoor: ${baseline.latestOutdoor?.toFixed(1)} μg/m³ (gate=${CONFIG.INDOOR_BASELINE.outdoorGate})`);
+    console.log(`  Alerts: ${baseline.alerts.length}${baseline.alerts[0] ? ' — ' + baseline.alerts[0].level : ''}`);
+  } else {
+    console.log(`  ${baseline.note || 'no alerts'}`);
+  }
 
   console.log('\n' + '═'.repeat(60));
+  console.log(`Monitor version: ${MONITOR_VERSION}`);
   console.log('Running full check...');
   const results = runAllChecks();
   console.log(`Alerts for you: ${results.alerts.you.length}`);
