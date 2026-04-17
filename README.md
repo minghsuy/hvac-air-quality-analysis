@@ -155,8 +155,8 @@ The Google Apps Script (`HVACMonitor_v3.gs`) provides:
 ## Documentation
 
 - [GitHub Pages — Methodology & Findings](https://minghsuy.github.io/hvac-air-quality-analysis/) - Dashboard architecture, statistical methodology, correlation findings
-- [Data Dictionary](DATA_DICTIONARY.md) - Field definitions and units
-- [Troubleshooting Guide](TROUBLESHOOTING.md) - Common issues and solutions
+- [Data Dictionary](docs/DATA_DICTIONARY.md) - Field definitions and units
+- [Troubleshooting Guide](docs/TROUBLESHOOTING.md) - Common issues and solutions
 - [Project Wiki](https://github.com/minghsuy/hvac-air-quality-analysis/wiki) - Detailed analysis and results
 - [Architecture](docs/ARCHITECTURE.md) - System design
 - [Lessons Learned](docs/LESSONS_LEARNED.md) - What worked and what didn't

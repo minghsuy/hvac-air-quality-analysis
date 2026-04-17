@@ -91,7 +91,7 @@ def check_setup():
         print("✅ Setup looks good! Ready to test.")
         print("\nNext steps:")
         print("1. Make sure you've shared your Google Sheet with the service account email")
-        print("2. Run: python read_google_sheets_secure.py")
+        print("2. Run: python scripts/utils/read_google_sheets_secure.py")
     else:
         print("❌ Setup incomplete. Fix the issues above and run this again.")
         print("\nQuick setup reminder:")

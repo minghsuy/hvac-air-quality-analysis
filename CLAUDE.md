@@ -6,8 +6,8 @@
 
 | File | Purpose |
 |------|--------|
-| `CLAUDE_CODE_CONTEXT.md` | **Read this for project vision, architecture, and constraints** |
-| `BACKLOG.md` | Prioritized task list (P0 = before March LinkedIn post) |
+| `docs/CLAUDE_CODE_CONTEXT.md` | **Read this for project vision, architecture, and constraints** |
+| `docs/BACKLOG.md` | Prioritized task list (P0 = before March LinkedIn post) |
 | `wiki-repo/Why-This-Project-Matters.md` | Personal story - the "why" |
 
 **TL;DR Vision**: Transform this into a family health dashboard. North star = one family's kid gets sick less.
@@ -159,7 +159,7 @@ journalctl --user -u air-quality-collector.timer --since "1 hour ago"
 ## 📊 Data Schema (v0.4.0)
 
 ### Current Implementation
-- **18 columns** in Google Sheets (see DATA_DICTIONARY.md)
+- **18 columns** in Google Sheets (see docs/DATA_DICTIONARY.md)
 - **Multi-room support** with sensor identification
 - **Smart alerting** with confidence levels
 - **Native API units** (Bq/m³ for radon, not pCi/L)
@@ -180,10 +180,10 @@ journalctl --user -u air-quality-collector.timer --since "1 hour ago"
 ## 📚 Documentation Structure
 
 - **README.md**: Project overview and quick start
-- **TROUBLESHOOTING.md**: Common issues and solutions
-- **DATA_DICTIONARY.md**: Complete field definitions
-- **PROJECT_STRUCTURE.md**: File organization
-- **RELEASE_CHECKLIST.md**: Release process details
+- **docs/TROUBLESHOOTING.md**: Common issues and solutions
+- **docs/DATA_DICTIONARY.md**: Complete field definitions
+- **docs/PROJECT_STRUCTURE.md**: File organization
+- **docs/RELEASE_CHECKLIST.md**: Release process details
 - **docs/ARCHITECTURE.md**: System design
 - **docs/LESSONS_LEARNED.md**: Historical insights
 

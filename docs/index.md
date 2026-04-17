@@ -30,7 +30,7 @@ Three sensors (Airthings View Plus, AirGradient Open Air, AirGradient ONE) colle
 
 - [GitHub Repository](https://github.com/minghsuy/hvac-air-quality-analysis)
 - [Project Wiki](https://github.com/minghsuy/hvac-air-quality-analysis/wiki)
-- [Data Dictionary](https://github.com/minghsuy/hvac-air-quality-analysis/blob/main/DATA_DICTIONARY.md)
+- [Data Dictionary](https://github.com/minghsuy/hvac-air-quality-analysis/blob/main/docs/DATA_DICTIONARY.md)
 
 ## Sensors
 
