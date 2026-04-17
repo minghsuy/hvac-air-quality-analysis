@@ -1,148 +1,129 @@
 # Project Structure
 
-## Core Files
+## Directory layout
 
-### Data Collection
 ```
-├── collect_with_sheets_api_v2.py  # Main collector with multi-room support
-├── sensors.json                   # Sensor configuration (IPs, rooms) - gitignored
-└── google-credentials.json        # Service account credentials (gitignored)
-```
-
-### Dashboard & Analysis
-```
+.
+├── README.md                           # Overview and quick start
+├── CLAUDE.md                           # AI-assistant guardrails for this repo
+├── CHANGELOG.md                        # Version history (kept at root by convention)
+├── LICENSE
+├── HVACMonitor_v3.gs                   # Apps Script source (copy/paste into Google Sheets)
+├── collect_with_sheets_api_v2.py       # Main collector — DGX systemd pins this absolute path
+├── collect_multi_fixed.py              # Local-only collector variant (gitignored; real sensor IDs)
+├── pyproject.toml                      # uv-managed dependencies (package = false)
+├── uv.lock
+├── cliff.toml                          # git-cliff config for CHANGELOG generation
+├── filter_changes_template.csv         # Template: filter-replacement log
+├── sensors.template.json               # Template: sensor config
+│
+├── .env.example                        # Copy to .env and fill in
+├── .gitignore
+├── .pre-commit-config.yaml
+│
+├── data/                               # Local CSV exports (gitignored)
+├── .cache/                             # Parquet cache for dashboard (gitignored)
+├── reports/                            # Screenshot artifacts from CI verify (gitignored)
+│
+├── docs/                               # GitHub Pages content + reference docs
+│   ├── index.md                        # Landing page
+│   ├── what-my-homes-air-taught-me.md  # Long-form findings piece
+│   ├── ARCHITECTURE.md
+│   ├── BACKLOG.md
+│   ├── CLAUDE_CODE_CONTEXT.md
+│   ├── DATA_DICTIONARY.md
+│   ├── LESSONS_LEARNED.md
+│   ├── PROJECT_STRUCTURE.md            # This file
+│   ├── RELEASE_CHECKLIST.md
+│   ├── TROUBLESHOOTING.md
+│   ├── findings.md
+│   ├── methodology.md
+│   ├── dashboard-architecture.md
+│   ├── data-quality.md
+│   ├── 5_MINUTE_INTERVALS.md
+│   ├── AI_ANALYSIS_PLAN.md
+│   ├── _config.yml                     # Jekyll config
+│   ├── charts/                         # Generated Plotly HTML
+│   └── reports/                        # Generated findings.html + embedded charts
+│
 ├── scripts/
-│   ├── dashboard.py               # Multi-page Streamlit dashboard (7 pages)
-│   ├── bench_heatmap.py           # Performance benchmark (Sheets vs Parquet vs Polars)
-│   └── create_visualizations.py   # Interactive Plotly HTML chart generator
-├── .cache/                         # Parquet data cache (gitignored)
-├── analyze_historical.py          # Historical data analyzer
-└── data/                          # Data storage (gitignored)
-    ├── *.csv                      # Airthings exports
-    └── figures/                   # Generated visualizations
+│   ├── dashboard.py                    # Streamlit dashboard entry point
+│   ├── fix_cron.sh                     # Cron repair helper
+│   ├── install-hooks.sh                # Install git hooks from scripts/hooks/
+│   ├── refresh_cache.py                # Manual parquet refresh from Sheets
+│   ├── setup_google_sheets_api.py      # First-time Sheets API config
+│   ├── read_sheets_simple.py
+│   ├── update_airgradient_ips.py
+│   ├── analysis/                       # Analysis + verification scripts
+│   │   ├── verify_findings.py          # Regenerates docs/reports/findings.html
+│   │   └── screenshot_report.py        # Playwright visual verify (CI + pre-push)
+│   ├── collectors/                     # Non-production collector variants
+│   │   └── collect_multi_fixed.template.py
+│   ├── utils/                          # Reusable utilities
+│   │   ├── analyze_historical.py
+│   │   ├── check_timestamps.py
+│   │   ├── generate_wiki_images.py
+│   │   ├── read_google_sheets.py
+│   │   └── read_google_sheets_secure.py
+│   └── hooks/
+│       └── pre-push                    # ruff + secrets + uv.lock + root-junk guardrail
+│
+├── systemd/                            # DGX systemd unit + timer for the collector
+├── tests/                              # pytest suite
+└── wiki-repo/                          # Separate git repo for GitHub Wiki (gitignored)
 ```
 
-### Google Apps Script
-```
-└── HVACMonitor_v3.gs             # Filter monitoring with efficiency-based alerts
-```
+## What stays at root on purpose
 
-## Configuration
+| File | Reason |
+|---|---|
+| `collect_with_sheets_api_v2.py` | DGX `systemd/air-quality-collector.service` hardcodes its absolute path. Moving it breaks production on the next pull. |
+| `HVACMonitor_v3.gs` | Copy-paste-ready Apps Script source; README surfaces it as a top-level artifact. |
+| `README.md`, `CLAUDE.md`, `LICENSE`, `CHANGELOG.md` | GitHub and tooling conventions expect these at root. |
+| `pyproject.toml`, `uv.lock`, `.env.example`, `.gitignore`, `cliff.toml`, `.pre-commit-config.yaml` | Tooling config files; tooling looks for them at repo root. |
+| `*.template.csv`, `*.template.py`, `*.template.json` | Templates allowed at root under the `!*_template.*` gitignore rule; copies become gitignored real files. |
 
-### Environment
-```
-├── .env                           # Your credentials (gitignored)
-├── .env.example                   # Template for environment variables
-└── pyproject.toml                 # Dependencies and project metadata
-```
+## Where new files should land
 
-### Version Control
-```
-├── .gitignore                     # Files to exclude from git
-├── .pre-commit-config.yaml        # Pre-commit hooks configuration
-└── CHANGELOG.md                   # Version history and changes
-```
+| Kind | Directory |
+|---|---|
+| Analysis / verification scripts | `scripts/analysis/` |
+| Collector variants (non-production) | `scripts/collectors/` |
+| Reusable helpers | `scripts/utils/` |
+| Reference docs, long-form writeups | `docs/` |
+| Local data exports | `data/` (gitignored) |
+| One-off debug output | `.cache/` or out of repo entirely |
 
-## Documentation
+The `scripts/hooks/pre-push` guardrail (Section 8) enforces this: any new `.py`, `.csv`, `.json`, or debug-pattern file pushed to root is rejected, with the one exception of the DGX-pinned collector.
 
-### Main Docs
-```
-├── README.md                      # Project overview and quick start
-├── TROUBLESHOOTING.md            # Common issues and solutions
-├── DATA_DICTIONARY.md            # Field definitions and units
-└── CLAUDE.md                     # AI assistant instructions
-```
-
-### Specialized Guides
-```
-├── docs/
-│   ├── ARCHITECTURE.md          # System design and data flow
-│   ├── LESSONS_LEARNED.md       # Key insights from deployment
-│   ├── 5_MINUTE_INTERVALS.md    # Why we use 5-minute collection
-│   ├── _config.yml              # GitHub Pages Jekyll config
-│   ├── charts/                  # Interactive Plotly HTML charts (generated)
-│   ├── index.md                 # GitHub Pages landing page
-│   ├── dashboard-architecture.md # Dashboard design and caching
-│   ├── methodology.md           # Statistical methodology (Spearman, LOWESS)
-│   ├── findings.md              # Correlation analysis results
-│   └── data-quality.md          # Data engineering fixes
-└── RELEASE_CHECKLIST.md         # Release process documentation
-```
-
-## Utility Scripts
+## Data flow
 
 ```
-└── scripts/
-    ├── read_sheets_simple.py      # Simple Google Sheets reader
-    ├── setup_google_sheets_api.py # API setup helper
-    ├── analysis/                  # Analysis scripts
-    └── collection/                # Collection utilities
+Sensors (Airthings, AirGradient, Temp Stick)
+        │  5-minute systemd timer on DGX
+        ▼
+collect_with_sheets_api_v2.py  ──► Google Sheets (source of truth)
+                                         │
+                                         ├──► HVACMonitor_v3.gs  (hourly alerts, email)
+                                         │
+                                         └──► scripts/refresh_cache.py  ──► .cache/air_quality.parquet
+                                                                                   │
+                                                                                   ▼
+                                                                          scripts/dashboard.py (Streamlit)
+                                                                          scripts/analysis/verify_findings.py (HTML)
 ```
 
-## Testing
-```
-└── tests/
-    ├── conftest.py                # Pytest configuration
-    └── test_collect_air_quality.py # Unit tests for collector
-```
+## Storage
 
-## CI/CD
-```
-└── .github/
-    └── workflows/
-        ├── test.yml              # Automated testing
-        └── release.yml           # Release automation
-```
+| Data | Location | Persistence |
+|---|---|---|
+| Raw sensor readings | Google Sheets | Permanent |
+| Analytical cache | `.cache/air_quality.parquet` | Local, regenerated on demand |
+| Collector logs | `journalctl --user -u air-quality-collector` (DGX) | System-managed |
+| Published findings | `docs/reports/findings.html` (GitHub Pages) | Versioned in repo |
 
-## File Purposes
+## Reminders
 
-| File | Purpose | Update Frequency |
-|------|---------|------------------|
-| `collect_with_sheets_api_v2.py` | Main data collector | As needed |
-| `sensors.json` | Sensor IP addresses | When IPs change |
-| `google-credentials.json` | Auth for Sheets API | Never (gitignored) |
-| `.env` | API credentials | As needed (gitignored) |
-| `HVACMonitor_v3.gs` | Google Sheets filter monitoring | Rarely |
-| `DATA_DICTIONARY.md` | Data schema documentation | When fields change |
-
-## Data Flow
-
-```
-1. Sensors (Airthings, AirGradient)
-   ↓
-2. Collector Script (every 5 minutes via systemd timer)
-   ↓
-3. Google Sheets (data storage)
-   ↓
-4. Apps Script (filter efficiency monitoring)
-   ↓
-5. Email Notifications (when thresholds exceeded)
-```
-
-## Quick Commands
-
-```bash
-# Test collection locally
-python collect_with_sheets_api_v2.py
-
-# Run with verbose test output
-python collect_with_sheets_api_v2.py --test
-
-# Check systemd timer status (on deployment server)
-systemctl --user status air-quality-collector.timer
-```
-
-## Storage Locations
-
-| Data Type | Location | Persistence |
-|-----------|----------|-------------|
-| Collected data | Google Sheets | Permanent |
-| Application logs | `journalctl --user -u air-quality-collector` | System managed |
-
-## Important Notes
-
-1. **Never commit**: `.env`, `google-credentials.json`, `sensors.json` (with real IPs)
-2. **Always use**: uv for dependency management (not pip)
-3. **Test locally**: Before deploying
-4. **Check logs**: When troubleshooting issues
-5. **Backup config**: Before making major changes
+- Never commit: `.env`, `google-credentials.json`, `sensors.json` (real IPs), `collect_multi_fixed.py` (non-template).
+- Use `uv`, never `pip`.
+- `pyproject.toml` sets `package = false` — no `*.egg-info/` should ever exist.
