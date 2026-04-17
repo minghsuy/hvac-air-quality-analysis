@@ -54,9 +54,12 @@ patterns=(
     '(airthings|airgradient|tempstick|ecobee|nest)_[A-Fa-f0-9]{4,}'
 )
 for pat in "${patterns[@]}"; do
-    if git diff "$range" -U0 --no-color 2>/dev/null | grep -Ei "$pat" >/dev/null; then
-        echo "FAIL: pattern /$pat/ matched in pushed diff:"
-        git diff "$range" -U0 --no-color | grep -Ei "$pat" | head -3
+    # Only scan ADDED lines (^+ prefix). Deletions of legitimate documentation
+    # that mentions these patterns (e.g., removing a pre-commit helper script)
+    # should not trip the scan.
+    if git diff "$range" -U0 --no-color 2>/dev/null | grep -E '^\+' | grep -Ei "$pat" >/dev/null; then
+        echo "FAIL: pattern /$pat/ matched in added lines of pushed diff:"
+        git diff "$range" -U0 --no-color | grep -E '^\+' | grep -Ei "$pat" | head -3
         exit 1
     fi
 done
