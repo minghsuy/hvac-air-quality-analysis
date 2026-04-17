@@ -5,8 +5,10 @@ Updated to write to a specific sheet tab (for cleaned data)
 """
 
 import os
+import sys
 import requests
 from datetime import datetime
+from pathlib import Path
 from dotenv import load_dotenv
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -307,8 +309,49 @@ def get_airgradient_data(serial, room, ip=None):
         return None
 
 
+# Temp Stick updates ~once per hour to preserve battery life. Polling every
+# 5 minutes would write 11 duplicate rows per cycle unless we gate on
+# last_checkin. Cache dir is gitignored (.cache/).
+_TEMPSTICK_CACHE = Path(SCRIPT_DIR) / ".cache" / "tempstick_last_checkin"
+
+
+def _read_tempstick_cache():
+    """Return the cached last_checkin string, or None if missing/unreadable.
+    Corrupt/torn cache files (e.g., SIGTERM mid-write) read as ``None`` →
+    caller treats as 'no prior state' and writes one row (self-healing).
+    Catches broadly (OSError, UnicodeDecodeError, ValueError) because every
+    read failure should degrade to 'no prior state', not starve the Sheet."""
+    try:
+        return _TEMPSTICK_CACHE.read_text().strip() or None
+    except FileNotFoundError:
+        return None
+    except (OSError, UnicodeDecodeError, ValueError) as e:
+        print(f"  ⚠️ Temp Stick cache read failed ({e}); proceeding without dedup", file=sys.stderr)
+        return None
+
+
+def _write_tempstick_cache(checkin):
+    """Atomically update the cache (.tmp + rename) so SIGTERM can't tear a write.
+    Cache write failures are non-fatal — better one duplicate row than a dropped reading."""
+    try:
+        _TEMPSTICK_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        tmp = _TEMPSTICK_CACHE.with_suffix(".tmp")
+        tmp.write_text(checkin)
+        os.replace(tmp, _TEMPSTICK_CACHE)
+    except OSError as e:
+        print(
+            f"  ⚠️ Temp Stick cache write failed ({e}); dedup may lapse this cycle", file=sys.stderr
+        )
+
+
 def get_tempstick_data():
-    """Get temperature/humidity data from Temp Stick WiFi sensor in attic"""
+    """Get temperature/humidity data from Temp Stick WiFi sensor in attic.
+
+    Returns ``None`` when:
+      - API key/sensor ID missing
+      - API non-200 / request exception
+      - Response's ``last_checkin`` matches the cached value (no new reading to record)
+    """
     if not TEMP_STICK_API_KEY or not TEMP_STICK_SENSOR_ID:
         return None
 
@@ -331,6 +374,16 @@ def get_tempstick_data():
             return None
 
         data = response.json().get("data", {})
+
+        # Dedup: if the sensor hasn't checked in again since our last row,
+        # skip this cycle entirely. Missing last_checkin (API schema drift)
+        # falls through to the write path so we don't starve the Sheet.
+        checkin = data.get("last_checkin")
+        if checkin:
+            cached = _read_tempstick_cache()
+            if cached == checkin:
+                return None
+            _write_tempstick_cache(checkin)
 
         # Temp Stick API returns °C (dashboard displays °F but API is metric)
         temp_c = data.get("last_temp")

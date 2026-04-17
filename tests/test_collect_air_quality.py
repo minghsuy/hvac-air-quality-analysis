@@ -322,6 +322,145 @@ class TestTempStickAPI:
         assert data is None
 
 
+class TestTempStickDedup:
+    """Dedup by last_checkin — skip Sheet write when the sensor hasn't reported
+    a fresh reading. Temp Stick updates ~hourly for battery life, so polling
+    every 5 min would otherwise write 11 duplicates per cycle."""
+
+    def _response(self, checkin, temp=20.06, humidity=35.5):
+        r = MagicMock()
+        r.status_code = 200
+        r.json.return_value = {
+            "data": {
+                "last_checkin": checkin,
+                "last_temp": temp,
+                "last_humidity": humidity,
+            }
+        }
+        return r
+
+    @patch("requests.get")
+    def test_writes_cache_on_first_call(self, mock_get, tmp_path):
+        """Empty cache → dict returned + cache populated with the checkin value."""
+        cache = tmp_path / "tempstick_last_checkin"
+        mock_get.return_value = self._response("2026-04-17 15:02:02")
+
+        with (
+            patch.object(collector, "TEMP_STICK_API_KEY", "k"),
+            patch.object(collector, "TEMP_STICK_SENSOR_ID", "TS00XXTST1"),
+            patch.object(collector, "_TEMPSTICK_CACHE", cache),
+        ):
+            data = collector.get_tempstick_data()
+
+        assert data is not None
+        assert data["temp"] == 20.06
+        assert cache.read_text() == "2026-04-17 15:02:02"
+
+    @patch("requests.get")
+    def test_skips_when_checkin_unchanged(self, mock_get, tmp_path):
+        """Cache matches API's last_checkin → returns None, Sheet write skipped."""
+        cache = tmp_path / "tempstick_last_checkin"
+        cache.write_text("2026-04-17 15:02:02")
+        mock_get.return_value = self._response("2026-04-17 15:02:02")
+
+        with (
+            patch.object(collector, "TEMP_STICK_API_KEY", "k"),
+            patch.object(collector, "TEMP_STICK_SENSOR_ID", "TS00XXTST1"),
+            patch.object(collector, "_TEMPSTICK_CACHE", cache),
+        ):
+            data = collector.get_tempstick_data()
+
+        assert data is None
+        # Cache stays exactly as it was — no spurious rewrites.
+        assert cache.read_text() == "2026-04-17 15:02:02"
+
+    @patch("requests.get")
+    def test_writes_when_checkin_differs(self, mock_get, tmp_path):
+        """Cache has an older checkin → new reading flows through, cache updated."""
+        cache = tmp_path / "tempstick_last_checkin"
+        cache.write_text("2026-04-17 14:02:02")
+        mock_get.return_value = self._response("2026-04-17 15:02:02", temp=21.5)
+
+        with (
+            patch.object(collector, "TEMP_STICK_API_KEY", "k"),
+            patch.object(collector, "TEMP_STICK_SENSOR_ID", "TS00XXTST1"),
+            patch.object(collector, "_TEMPSTICK_CACHE", cache),
+        ):
+            data = collector.get_tempstick_data()
+
+        assert data is not None
+        assert data["temp"] == 21.5
+        assert cache.read_text() == "2026-04-17 15:02:02"
+
+    @patch("requests.get")
+    def test_missing_checkin_returns_dict_without_touching_cache(self, mock_get, tmp_path):
+        """API 200 without last_checkin (schema drift) → still return dict but
+        leave the cache untouched so an empty-string value can't starve all
+        subsequent calls."""
+        cache = tmp_path / "tempstick_last_checkin"
+        cache.write_text("2026-04-17 14:02:02")
+
+        r = MagicMock()
+        r.status_code = 200
+        # last_checkin absent from the payload
+        r.json.return_value = {"data": {"last_temp": 20.0, "last_humidity": 40.0}}
+        mock_get.return_value = r
+
+        with (
+            patch.object(collector, "TEMP_STICK_API_KEY", "k"),
+            patch.object(collector, "TEMP_STICK_SENSOR_ID", "TS00XXTST1"),
+            patch.object(collector, "_TEMPSTICK_CACHE", cache),
+        ):
+            data = collector.get_tempstick_data()
+
+        assert data is not None
+        assert data["temp"] == 20.0
+        # Cache preserved — no partial state that would poison the next cycle.
+        assert cache.read_text() == "2026-04-17 14:02:02"
+
+    @patch("requests.get")
+    def test_corrupt_cache_self_heals(self, mock_get, tmp_path):
+        """Garbage bytes in the cache (torn write) → treated as 'no prior state',
+        one duplicate row this cycle, cache re-seeded."""
+        cache = tmp_path / "tempstick_last_checkin"
+        cache.write_bytes(b"\x00\xff\x00partial-write")
+        mock_get.return_value = self._response("2026-04-17 15:02:02")
+
+        with (
+            patch.object(collector, "TEMP_STICK_API_KEY", "k"),
+            patch.object(collector, "TEMP_STICK_SENSOR_ID", "TS00XXTST1"),
+            patch.object(collector, "_TEMPSTICK_CACHE", cache),
+        ):
+            data = collector.get_tempstick_data()
+
+        # read_text on the corrupt bytes may raise — _read_tempstick_cache
+        # should handle that gracefully and treat it as cache-miss.
+        assert data is not None
+        assert cache.read_text() == "2026-04-17 15:02:02"
+
+    @patch("requests.get")
+    def test_api_429_does_not_touch_cache(self, mock_get, tmp_path):
+        """429 from the edge WAF → return None immediately; never read or write
+        the cache (transient failure shouldn't corrupt state)."""
+        cache = tmp_path / "tempstick_last_checkin"
+        cache.write_text("2026-04-17 14:02:02")
+
+        r = MagicMock()
+        r.status_code = 429
+        r.text = "Too Many Requests"
+        mock_get.return_value = r
+
+        with (
+            patch.object(collector, "TEMP_STICK_API_KEY", "k"),
+            patch.object(collector, "TEMP_STICK_SENSOR_ID", "TS00XXTST1"),
+            patch.object(collector, "_TEMPSTICK_CACHE", cache),
+        ):
+            data = collector.get_tempstick_data()
+
+        assert data is None
+        assert cache.read_text() == "2026-04-17 14:02:02"
+
+
 class TestEfficiencyEdgeCases:
     """Test edge cases in efficiency calculation"""
 
