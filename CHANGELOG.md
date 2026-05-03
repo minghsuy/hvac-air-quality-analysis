@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`Indoor_Pressure` column** (#39). Airthings View Plus exposes barometric pressure (`sensorType: "pressure"`, mbar/hPa, verified live as 1011.6 mbar at our device). `get_airthings_data()` now collects it (both new- and legacy-format API branches, empty-string sentinel for missing-vs-zero unambiguity). Sheet schema bumped to 19 columns: `EXPECTED_COLS = 19`, `SHEET_RANGE = "A:S"`, headers list and all four hardcoded `A:R` / `A1:R1` references updated. Pre-deploy 18-col rows naturally pad to NaN for `Indoor_Pressure` without triggering the 17→18 shift-repair (gated on `Timestamp < 2025-09-01`). Two new tests: 19-col modern row preserves pressure value, 18-col modern row gets NaN without shift-repair. Pure data-collection change — no monitor / alert behavior modifications.
+
 ### Fixed
 - **`checkPressure` now resilient to Open-Meteo 5xx flake** (#35). Adds Script Properties cache (`PRESSURE_CACHE_V1`, 24h TTL) populated by every successful hourly `runAllChecks` call. When the live call fails — confirmed in production as intermittent `HTTP 502 Bad Gateway` from Open-Meteo's nginx — `checkPressure` returns the cached snapshot with `alerts: []` (no stale nerve-pain alerts) and `weeklyReport` annotates cached values as `Current: NNNN hPa (cached Xh ago — live API failed at report time)` instead of the previous `Unavailable (weather API error)`. Real HTTP status code and response body snippet now logged on failure for diagnosability. `analyzePressure` defensively guards against malformed/missing `hourly` payloads (missing keys, non-array values, empty `time`, or `time`/`surface_pressure` length mismatch — the last would otherwise let `NaN` reach the cache writer).
 

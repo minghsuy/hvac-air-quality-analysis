@@ -24,8 +24,8 @@ import pandas as pd
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-EXPECTED_COLS = 18
-SHEET_RANGE = "A:R"
+EXPECTED_COLS = 19
+SHEET_RANGE = "A:S"
 SCHEMA_STABILIZED = pd.Timestamp("2025-09-01")
 
 NUMERIC_COLS = [
@@ -43,6 +43,7 @@ NUMERIC_COLS = [
     "Outdoor_Humidity",
     "Outdoor_VOC",
     "Outdoor_NOX",
+    "Indoor_Pressure",
 ]
 
 # Columns whose values shifted when the schema grew from 17 to 18 cols.

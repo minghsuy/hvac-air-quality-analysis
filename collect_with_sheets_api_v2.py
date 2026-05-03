@@ -80,9 +80,9 @@ def ensure_headers(service, spreadsheet_id):
 
         # Build range based on whether we're using a specific tab
         if SHEET_TAB_NAME:
-            range_name = f"{SHEET_TAB_NAME}!A1:R1"
+            range_name = f"{SHEET_TAB_NAME}!A1:S1"
         else:
-            range_name = "A1:R1"
+            range_name = "A1:S1"
 
         result = sheet.values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
 
@@ -108,6 +108,7 @@ def ensure_headers(service, spreadsheet_id):
             "Outdoor_Humidity",
             "Outdoor_VOC",
             "Outdoor_NOX",
+            "Indoor_Pressure",
         ]
 
         # If no headers or different headers, update them
@@ -142,9 +143,9 @@ def append_to_sheet(service, spreadsheet_id, values):
 
         # Build range based on whether we're using a specific tab
         if SHEET_TAB_NAME:
-            range_name = f"{SHEET_TAB_NAME}!A:R"
+            range_name = f"{SHEET_TAB_NAME}!A:S"
         else:
-            range_name = "A:R"
+            range_name = "A:S"
 
         result = (
             service.spreadsheets()
@@ -232,6 +233,7 @@ def get_airthings_data():
                 "temp": sensor_data.get("temp", 0),
                 "humidity": sensor_data.get("humidity", 0),
                 "radon": sensor_data.get("radonShortTermAvg", 0),
+                "pressure": sensor_data.get("pressure", ""),
             }
         elif sensors.get("sensors"):
             # Old format (legacy)
@@ -247,6 +249,7 @@ def get_airthings_data():
                 "temp": sensor.get("temp", 0),
                 "humidity": sensor.get("humidity", 0),
                 "radon": sensor.get("radonShortTermAvg", 0),
+                "pressure": sensor.get("pressure", ""),
             }
     except Exception as e:
         print(f"Airthings API error: {e}")
@@ -296,6 +299,7 @@ def get_airgradient_data(serial, room, ip=None):
                             "rhumCompensated", data.get("rhum", 0)
                         ),  # And humidity
                         "radon": "",  # Empty string for missing data
+                        "pressure": "",  # AirGradient doesn't expose barometric pressure
                         "raw_data": data,
                     }
             except (requests.RequestException, KeyError, ValueError):
@@ -435,6 +439,7 @@ def build_air_quality_row(timestamp, sensor, outdoor, efficiency):
         outdoor["humidity"],
         outdoor["voc"],
         outdoor["nox"],
+        sensor.get("pressure", ""),  # Indoor barometric pressure (Airthings only)
     ]
 
 
@@ -459,6 +464,7 @@ def build_temp_only_row(timestamp, sensor):
         "",  # Outdoor_Humidity
         "",  # Outdoor_VOC
         "",  # Outdoor_NOX
+        "",  # Indoor_Pressure
     ]
 
 
