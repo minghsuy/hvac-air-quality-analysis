@@ -590,6 +590,41 @@ class TestSheetsLoader:
         assert df.iloc[0]["Indoor_Pressure"] == 1011.6
         assert df.iloc[0]["Indoor_Temp"] == 22.5
 
+    def test_legacy_18col_row_no_shift_repair(self):
+        """Pre-2025-09-01 rows that already had 18 columns (n=536 observed in
+        production) had complete legacy values and must not be shift-repaired.
+        Regression guard: when EXPECTED_COLS bumps for new column additions,
+        these rows must continue to preserve their values."""
+        values = [
+            HEADERS,
+            [
+                "2025-08-15 10:00:00",
+                "airthings_abc",
+                "master_bedroom",
+                "airthings",
+                "1.5",
+                "4.0",
+                "62.5",
+                "600",
+                "100",
+                "5",
+                "22.5",  # Indoor_Temp ← must survive
+                "45.0",  # Indoor_Humidity ← must survive
+                "50",
+                "420",
+                "15.0",  # Outdoor_Temp ← must survive
+                "60.0",
+                "80",
+                "3",
+                # 18 values: pre-stabilization but already-full row
+            ],
+        ]
+        df = _sheets_loader._values_to_df(values)
+        assert len(df) == 1
+        assert df.iloc[0]["Indoor_Temp"] == 22.5
+        assert df.iloc[0]["Indoor_Humidity"] == 45.0
+        assert df.iloc[0]["Outdoor_Temp"] == 15.0
+
     def test_legacy_17col_row_triggers_shift_repair(self):
         """Pre-2025-09-01 row with 17 columns: shift-repair nulls Indoor_Temp etc."""
         # Legacy short row — missing last column; shift-repair nulls the SHIFTED_COLS
