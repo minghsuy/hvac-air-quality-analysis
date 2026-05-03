@@ -223,6 +223,9 @@ function runAllChecks() {
 // PRESSURE MONITORING (For wife - nerve pain)
 // ============================================================================
 
+const PRESSURE_CACHE_KEY = 'PRESSURE_CACHE_V1';
+const PRESSURE_CACHE_MAX_AGE_HOURS = 24;
+
 function checkPressure() {
   const location = getLocation();
   const url = `https://api.open-meteo.com/v1/forecast?` +
@@ -232,16 +235,70 @@ function checkPressure() {
     `&past_hours=12&forecast_hours=24`;
 
   try {
-    const response = UrlFetchApp.fetch(url);
+    const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    const code = response.getResponseCode();
+    if (code !== 200) {
+      throw new Error(`HTTP ${code}: ${response.getContentText().slice(0, 200)}`);
+    }
     const data = JSON.parse(response.getContentText());
-    return analyzePressure(data);
+    const result = analyzePressure(data);
+    if (result.current == null) {
+      console.log('Pressure: analyze rejected response shape, falling back to cache');
+      return readPressureCache();
+    }
+    writePressureCache(result);
+    return result;
   } catch (error) {
-    console.log('Pressure API error:', error);
-    return { current: null, alerts: [] };
+    const msg = error && error.message ? error.message : String(error);
+    console.log('Pressure API error:', msg);
+    return readPressureCache();
+  }
+}
+
+function writePressureCache(result) {
+  if (result == null || result.current == null) return;
+  PropertiesService.getScriptProperties().setProperty(PRESSURE_CACHE_KEY, JSON.stringify({
+    timestamp: new Date().toISOString(),
+    current: result.current,
+    trend: result.trend,
+    forecast: result.forecast,
+  }));
+}
+
+function readPressureCache() {
+  const raw = PropertiesService.getScriptProperties().getProperty(PRESSURE_CACHE_KEY);
+  if (!raw) return { current: null, alerts: [], cached: false };
+  try {
+    const cached = JSON.parse(raw);
+    const ageHours = (new Date() - new Date(cached.timestamp)) / (1000 * 60 * 60);
+    if (ageHours > PRESSURE_CACHE_MAX_AGE_HOURS) {
+      console.log(`Pressure cache too stale (${ageHours.toFixed(1)}h), discarding`);
+      return { current: null, alerts: [], cached: false };
+    }
+    console.log(`Pressure: serving cached value from ${ageHours.toFixed(1)}h ago`);
+    return {
+      current: cached.current,
+      trend: cached.trend,
+      forecast: cached.forecast,
+      alerts: [], // never re-fire alerts from stale data
+      cached: true,
+      cacheAgeHours: ageHours,
+    };
+  } catch (e) {
+    console.log('Pressure cache parse error:', e && e.message ? e.message : e);
+    return { current: null, alerts: [], cached: false };
   }
 }
 
 function analyzePressure(data) {
+  if (!data || !data.hourly ||
+      !Array.isArray(data.hourly.time) ||
+      !Array.isArray(data.hourly.surface_pressure) ||
+      data.hourly.time.length === 0 ||
+      data.hourly.surface_pressure.length !== data.hourly.time.length) {
+    console.log('analyzePressure: malformed or missing hourly data');
+    return { current: null, alerts: [] };
+  }
   const times = data.hourly.time;
   const pressures = data.hourly.surface_pressure;
   const now = new Date();
@@ -1373,14 +1430,20 @@ function weeklyReport() {
   body += '\n🌡️ PRESSURE (for nerve pain tracking)\n';
   body += '─'.repeat(40) + '\n';
   if (pressure.current) {
-    body += `Current: ${pressure.current.toFixed(0)} hPa\n`;
+    body += `Current: ${pressure.current.toFixed(0)} hPa`;
+    if (pressure.cached) {
+      const hrs = Math.max(1, Math.round(pressure.cacheAgeHours));
+      body += ` (cached ${hrs}h ago — live API failed at report time)\n`;
+    } else {
+      body += '\n';
+    }
     if (pressure.alerts && pressure.alerts.length > 0) {
       pressure.alerts.forEach(a => { body += `${a.message ?? String(a)}\n`; });
-    } else {
+    } else if (!pressure.cached) {
       body += 'Stable this week\n';
     }
   } else {
-    body += 'Unavailable (weather API error)\n';
+    body += 'Unavailable (weather API error, no recent cache)\n';
   }
 
   // --- Outdoor Air Quality (Problem 3) ---
