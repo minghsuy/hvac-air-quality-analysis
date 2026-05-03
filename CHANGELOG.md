@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **`checkPressure` now resilient to Open-Meteo 5xx flake** (#35). Adds Script Properties cache (`PRESSURE_CACHE_V1`, 24h TTL) populated by every successful hourly `runAllChecks` call. When the live call fails — confirmed in production as intermittent `HTTP 502 Bad Gateway` from Open-Meteo's nginx — `checkPressure` returns the cached snapshot with `alerts: []` (no stale nerve-pain alerts) and `weeklyReport` annotates cached values as `Current: NNNN hPa (cached Xh ago — live API failed at report time)` instead of the previous `Unavailable (weather API error)`. Also: real HTTP status code and response body snippet now logged on failure for diagnosability, and `analyzePressure` defensively guards against malformed/missing `hourly` payloads.
+
 ## [0.6.0] - 2026-04-17
 
 ### Added
