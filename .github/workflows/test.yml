@@ -38,7 +38,21 @@ jobs:
     - name: Run tests
       run: |
         uv run pytest tests/
-        
+
+    # Apps Script (.gs) is V8 JavaScript. Node syntax-checks it cleanly after
+    # a rename — catches typos and broken parens before paste-into-editor deploys.
+    # Ubuntu-only because node is preinstalled and the check is OS-independent.
+    - name: Apps Script syntax check
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        for gs in $(find . -name '*.gs' -not -path './.git/*' -not -path './.venv/*'); do
+          tmp=$(mktemp --suffix=.js)
+          cp "$gs" "$tmp"
+          node --check "$tmp" || { echo "Syntax error in $gs"; exit 1; }
+          rm "$tmp"
+          echo "OK: $gs"
+        done
+
     # Coverage disabled until package structure is implemented
     # - name: Upload coverage
     #   uses: codecov/codecov-action@v4
