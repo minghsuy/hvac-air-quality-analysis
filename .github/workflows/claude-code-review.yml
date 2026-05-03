@@ -1,19 +1,28 @@
-name: Claude Code Review (on-demand)
+name: Claude Code Review
 
-# On-demand PR review. Trigger with an "@claude-review" mention in any PR comment.
-# This complements claude.yml (generic @claude handler) — use @claude-review
-# when you want the structured review rubric below.
+# Auto-fires on PR open / ready_for_review.
+# Manual re-trigger after addressing feedback: comment "@claude-review" on the PR.
+# Skips drafts and bot-authored PRs by design.
 
 on:
+  pull_request:
+    types: [opened, ready_for_review]
   issue_comment:
     types: [created]
 
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
   claude-review:
-    # Only run when someone mentions @claude-review on a PR (not a plain issue).
     if: |
-      github.event.issue.pull_request != null &&
-      contains(github.event.comment.body, '@claude-review')
+      (github.event_name == 'pull_request' &&
+        github.event.pull_request.draft == false &&
+        github.event.pull_request.user.type != 'Bot') ||
+      (github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request != null &&
+        contains(github.event.comment.body, '@claude-review'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -21,6 +30,9 @@ jobs:
       issues: write
       id-token: write
       actions: read  # lets Claude check CI status when deciding severity
+
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
 
     steps:
       - name: Checkout repository
@@ -39,8 +51,7 @@ jobs:
             --model claude-opus-4-7
             --allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr checks:*),Bash(gh run view:*),Bash(gh api:*),Bash(git log:*),Bash(git show:*),Bash(git diff:*),Bash(cat:*),Bash(ls:*)"
           prompt: |
-            Review PR #${{ github.event.issue.number }} in ${{ github.repository }}.
-            The author requested this review by commenting @claude-review.
+            Review PR #${{ env.PR_NUMBER }} in ${{ github.repository }}.
 
             # Your goal
             High signal-to-noise. The author is a senior data scientist with 12+
@@ -51,10 +62,10 @@ jobs:
             # Must-read context BEFORE reviewing (in this order)
             1. `cat CLAUDE.md` — project conventions and NEVER-commit rules
             2. `cat docs/LESSONS_LEARNED.md` — resolved past mistakes. DO NOT re-raise an item listed here unless this PR clearly re-introduces the same problem.
-            3. `gh pr view ${{ github.event.issue.number }} --json title,body,author` — author's stated intent and scope
-            4. `gh pr diff ${{ github.event.issue.number }}` — the actual changes
-            5. `gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments` — prior comments on this PR. DO NOT re-raise points the author has already addressed or explicitly rejected with reasoning.
-            6. `gh pr checks ${{ github.event.issue.number }}` — if tests already pass, weigh that in severity decisions.
+            3. `gh pr view ${{ env.PR_NUMBER }} --json title,body,author` — author's stated intent and scope
+            4. `gh pr diff ${{ env.PR_NUMBER }}` — the actual changes
+            5. `gh api repos/${{ github.repository }}/issues/${{ env.PR_NUMBER }}/comments` — prior comments on this PR. DO NOT re-raise points the author has already addressed or explicitly rejected with reasoning.
+            6. `gh pr checks ${{ env.PR_NUMBER }}` — if tests already pass, weigh that in severity decisions.
 
             # What you're looking for (ordered by importance)
             1. **CLAUDE.md violations** — especially NEVER-commit items (IPs, MAC addrs, device serials, personal emails, credentials, hardcoded spreadsheet IDs)
@@ -62,6 +73,7 @@ jobs:
             3. **Breaking API / schema changes** not described in the PR body
             4. **Security issues** — secret exposure, injection vectors, unsafe deserialization
             5. **Silent correctness bugs** — timezone mixing, off-by-one on windows, incorrect aggregation, wrong boundary handling
+            6. **Apps Script-specific risks** when `.gs` files change — silent UrlFetchApp failures, Script Properties size limits (9KB/key, 500KB total), trigger quota, V8 vs Rhino feature drift, missing `muteHttpExceptions`
 
             # What you SHOULD NOT flag (even as SHOULD FIX)
             - **Missing unit tests** — author decides when tests are worth it for utility scripts
@@ -83,7 +95,7 @@ jobs:
             3. **Adversarial reviewer** — what specific scenario breaks this code today? Name it concretely, or don't mention it.
 
             # Output format
-            Post ONE comment via `gh pr comment ${{ github.event.issue.number }} --body "..."`. Structure:
+            Post ONE comment via `gh pr comment ${{ env.PR_NUMBER }} --body "..."`. Structure:
             - **Verdict (1 line):** approve / request changes / needs discussion
             - **:red_circle: BLOCKING** — only if any, else omit the section entirely
             - **:yellow_circle: SHOULD FIX** — only if any, else omit
