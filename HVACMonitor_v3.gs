@@ -291,7 +291,11 @@ function readPressureCache() {
 }
 
 function analyzePressure(data) {
-  if (!data || !data.hourly || !Array.isArray(data.hourly.time) || !Array.isArray(data.hourly.surface_pressure) || data.hourly.time.length === 0) {
+  if (!data || !data.hourly ||
+      !Array.isArray(data.hourly.time) ||
+      !Array.isArray(data.hourly.surface_pressure) ||
+      data.hourly.time.length === 0 ||
+      data.hourly.surface_pressure.length !== data.hourly.time.length) {
     console.log('analyzePressure: malformed or missing hourly data');
     return { current: null, alerts: [] };
   }
