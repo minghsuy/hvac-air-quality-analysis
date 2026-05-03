@@ -24,9 +24,15 @@ import pandas as pd
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-EXPECTED_COLS = 18
-SHEET_RANGE = "A:R"
+EXPECTED_COLS = 19
+SHEET_RANGE = "A:S"
 SCHEMA_STABILIZED = pd.Timestamp("2025-09-01")
+# Shift-repair only fires on rows narrower than the *legacy* full width (18 cols).
+# Decoupled from EXPECTED_COLS so future schema additions (column 20, 21, …)
+# don't retroactively pull more historical rows into the shift-repair path.
+# Verified 2026-05-03: 536 pre-stabilization rows are already 18-col; only true
+# 17-col legacy rows should be repaired.
+LEGACY_SHIFT_THRESHOLD = 18
 
 NUMERIC_COLS = [
     "Indoor_PM25",
@@ -43,6 +49,7 @@ NUMERIC_COLS = [
     "Outdoor_Humidity",
     "Outdoor_VOC",
     "Outdoor_NOX",
+    "Indoor_Pressure",
 ]
 
 # Columns whose values shifted when the schema grew from 17 to 18 cols.
@@ -99,9 +106,12 @@ def _values_to_df(values: list[list[str]]) -> pd.DataFrame:
     for col in set(NUMERIC_COLS) & set(df.columns):
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # Shift-repair: only for pre-stabilization rows. Modern rows under
-    # EXPECTED_COLS are Sheets API trailing-empty truncation, not schema shift.
-    shifted = (orig_cols < EXPECTED_COLS) & (df["Timestamp"] < SCHEMA_STABILIZED)
+    # Shift-repair: only for pre-stabilization rows narrower than the legacy
+    # full width (18 cols). Modern rows under EXPECTED_COLS are Sheets API
+    # trailing-empty truncation, not schema shift. Pre-stabilization 18-col
+    # rows (n=536, observed 2026-05-03) had complete legacy values and must
+    # not be shift-repaired either.
+    shifted = (orig_cols < LEGACY_SHIFT_THRESHOLD) & (df["Timestamp"] < SCHEMA_STABILIZED)
     for col in set(SHIFTED_COLS) & set(df.columns):
         df.loc[shifted, col] = np.nan
 

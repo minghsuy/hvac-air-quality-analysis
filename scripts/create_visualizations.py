@@ -66,7 +66,7 @@ def fetch_data():
     service = build("sheets", "v4", credentials=credentials)
     sheet = service.spreadsheets()
 
-    range_name = f"{sheet_tab}!A:R" if sheet_tab else "A:R"
+    range_name = f"{sheet_tab}!A:S" if sheet_tab else "A:S"
     print(f"Fetching data from '{range_name}'... (this may take a moment)")
 
     result = sheet.values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
